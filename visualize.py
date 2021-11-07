@@ -51,7 +51,7 @@ def visualize_day(df, date, show_null=False):
     """
 
     date_df = df[df["date"] == date]
-    if show_null:
+    if not show_null:
         date_df = date_df[~df["chlorophyll"].isnull()]
 
     fig = px.scatter_mapbox(date_df, lat="meanlat", lon="meanlon", hover_name="chlorophyll", 
@@ -63,4 +63,4 @@ def visualize_day(df, date, show_null=False):
 
 # visualize data
 visualize_day(merge_position("data/merged_sst_ice_chl_par_2003.RDS", 
-    "data/Bering_full_grid_lookup_no_goa.RDS"), datetime.date(2003, 7, 1))
+    "data/Bering_full_grid_lookup_no_goa.RDS"), datetime.date(2003, 6, 1))
