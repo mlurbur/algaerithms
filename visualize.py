@@ -1,7 +1,7 @@
-import pandas as pd
 import pyreadr
 import datetime
 import plotly.express as px
+import sys
 
 def merge_position(rds_file, mapping_file):
     """
@@ -61,6 +61,28 @@ def visualize_day(df, date, show_null=False):
     fig.show()
 
 
-# visualize data
-visualize_day(merge_position("data/merged_sst_ice_chl_par_2003.RDS", 
-    "data/Bering_full_grid_lookup_no_goa.RDS"), datetime.date(2003, 6, 1))
+def main():
+
+    # collect and parse inputs
+    DATE_ARG_LENGTH = 10 # format is MM/DD/YY, e.g. 06/01/2003
+    USAGE_ERROR_MSG = "    USAGE: python visualize.py <MM/DD/YYYY> [null]"
+    if len(sys.argv) < 2:
+        print("visualize.py: requires a date argument")
+        print(USAGE_ERROR_MSG)
+        exit()
+    date_arg = sys.argv[1]
+    if len(date_arg) != DATE_ARG_LENGTH:
+        print("visualize.py: incorrect date format")
+        print(USAGE_ERROR_MSG)
+        exit()
+    date = datetime.datetime.strptime(date_arg, "%m/%d/%Y").date()
+    show_null = False
+    if len(sys.argv) > 2:
+        show_null = sys.argv[2] == "null"
+
+    # visualize data
+    visualize_day(merge_position("data/merged_sst_ice_chl_par_" + str(date.year)
+        + ".RDS", "data/Bering_full_grid_lookup_no_goa.RDS"), date, show_null)
+
+if __name__ == '__main__':
+    main()

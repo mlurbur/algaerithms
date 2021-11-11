@@ -4,6 +4,16 @@ Definitions:
 - sst: sea surface temperature
 - par: photosynthetically active radiation
 
+## Setup
+
+```
+python3 -m venv env
+source env/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+```
+This creates the virtual environment and installs project dependencies.
+
 ## Downloading data
 
 Run `python download_data.py`
@@ -12,13 +22,12 @@ This will create a `data/` folder containing 19 `.RDS` files (R data files) cont
 
 ## Inspecting data
 
-Run `python visualize.py`
+Run `python visualize.py <MM/DD/YYYY> [null]`
 
-This will visualize the chlorophyll data for a particular day.
+This will visualize the chlorophyll data for a particular day. Providing "null" will show the cloud-covered points.
 
 ## Data info
 
-The data is summarized over eight day periods and grouped into grid blocks. For a better visualization of the grid, set `show_null=True` in `visualize_day()` when running `visualize.py`.
+The data is summarized over eight day periods and grouped into grid blocks.
 
 Ice, par and sst values are present for every time period. An ice value of null/nan means no ice was present.
-
