@@ -2,12 +2,12 @@
 ### Moses Lurbur (mlurbur), Max Pokutta (mpokutta), Leon Jiang (ljiang15)
 
 ## Introduction: 
-The National Oceanic and Atmospheric Administration (NOAA) closely monitors the health of the Bering Sea using a variety of biological metrics, one of which is chlorophyll levels. Chlorophyll is an indicator of Phytoplankton abundance, an important food source for juvenile fish and indication of overall ocean health.
-Chlorophyll levels are monitored via satellite, but the data contains large gaps due to high cloud cover in the Bering Sea.
-Our project will attempt to implement some form of structured prediction to fill the gaps in Chlorophyll data.
+- The National Oceanic and Atmospheric Administration (NOAA) closely monitors the health of the Bering Sea using a variety of biological metrics, one of which is chlorophyll levels. Chlorophyll is an indicator of Phytoplankton abundance, an important food source for juvenile fish and indication of overall ocean health.
+- Chlorophyll levels are monitored via satellite, but the data contains large gaps due to high cloud cover in the Bering Sea.
+- Our project will attempt to implement some form of structured prediction to fill the gaps in Chlorophyll data.
 This topic by discussions about applications of DL with some of Moses’s past colleagues at NOAA. This project is an opportunity to apply DL to a highly relevant issue with potential impacts on fisheries regulations, policy and overall understanding of ocean health and dynamics in the Bering Sea.
-We will be consulting with a scientist at NOAA during the project to ensure we have a strong understanding of the problem, deliver meaningful results and have access to data.
-Concretely, we are aiming to solve a regression problem, predicting chlorophyll levels, under a supervised learning framework using historical data to train and test our model.
+- We will be consulting with a scientist at NOAA during the project to ensure we have a strong understanding of the problem, deliver meaningful results and have access to data.
+- Concretely, we are aiming to solve a regression problem, predicting chlorophyll levels, under a supervised learning framework using historical data to train and test our model.
 
 ## Related Work:
 A Spatiotemporal Prediction Framework for Air Pollution Based on Deep RNN
