@@ -37,8 +37,7 @@ def merge_position(rds_file, mapping_file):
 
     return df
 
-
-def create_mapping_dict(mapping_file):
+def convert():
     """
     Converts df from merge_position to an array of form:
     [
@@ -58,92 +57,104 @@ def create_mapping_dict(mapping_file):
     Returns:
     data_array: Array of shape (num_time_steps, num_data_types, num_unique_lat, num_unique_lon)
     """
+    pass
+
+def create_mapping_dict(mapping_file):
+    """
+    Creates dict that maps lat,long to x,y coords in an array. This is fairly specific to
+    the format of our data, so use caution.
+
+    Args:
+    mapping_file: path to file that contains mapping of gridid to lat, lon
+
+    Returns:
+    fml_dict: dict of form {(lat,long): (x,y)} for every point in mapping_file
+    """
 
     # load mapping file
     mapping = pyreadr.read_r(mapping_file)[None].to_numpy()
 
-    # get lat and lon values
-    lati, long = mapping[:,1], mapping[:,2]
-    points = np.array((lati,long)).T
-    lat_arg = np.argsort(lati)
-    lon_arg = np.argsort(long)
-    max_lat = lati[lat_arg[-1]]
-    min_lat = lati[lat_arg[0]]
-    min_lon = long[lon_arg[0]]
-    max_lon = long[lon_arg[-1]]
+    lat_vals, lon_vals = mapping[:,1], mapping[:,2]
+    points = np.array((lat_vals,lon_vals)).T
+    lat_arg = np.argsort(lat_vals)
+    lon_arg = np.argsort(lon_vals)
+    max_lat = lat_vals[lat_arg[-1]]
+    min_lat = lat_vals[lat_arg[0]]
+    min_lon = lon_vals[lon_arg[0]]
+    max_lon = lon_vals[lon_arg[-1]]
     grid_w = 1.0125
     grid_h = 0.525
 
-    lons = np.arange(start=min_lon-(grid_w/2), stop=max_lon+(grid_w/2),  step=grid_w)
+    lon_lines = np.arange(start=min_lon-(grid_w/2), stop=max_lon+(grid_w/2),  step=grid_w)
 
-    # correct lats
-    filtered_points = []
+    # generate latitude lines by calculating midpoints between 
+    # all lat values for points less than the second lon line (easier to visualize with plot)
+    filtered_points_lat = []
     for p in points:
         # check long is less than bound
-        if p[1] < lons[1]:
-            filtered_points.append(p)
+        if p[1] < lon_lines[1]:
+            filtered_points_lat.append(p)
     
-    lats = []
-    max = len(filtered_points)-1
-    sorty = sorted(filtered_points, key=lambda x: x[0])
+    lat_lines = []
+    max = len(filtered_points_lat)-1
+    sorted_points_lat = sorted(filtered_points_lat, key=lambda x: x[0])
     l=0
     while l < max:
-        mid = (sorty[l+1][0] + sorty[l][0])/2
-        lats.append(mid)
+        mid = (sorted_points_lat[l+1][0] + sorted_points_lat[l][0])/2
+        lat_lines.append(mid)
         l+=1
-    # add last lines
-    lats.append(sorty[-1][0]+grid_h)
 
-    # correct lons
-
-    filtered_points = []
-    sorted_lats = sorted(lats)
+    # Recalculate lon_lines to get them more centered using a similar technique as above
+    # this time, using points between the 7th and 8th lat line (again, easier to understand by looking at graph)
+    filtered_points_lon = []
+    sorted_lats = sorted(lat_lines)
     for p in points:
         # check long is less than bound
         if (p[0] > sorted_lats[6]) and (p[0] < sorted_lats[7]):
-            filtered_points.append(p)
+            filtered_points_lon.append(p)
 
-    lons = []
-    max = len(filtered_points)-1
-    sorty = sorted(filtered_points, key=lambda x: x[1])
+    lon_lines = []
+    max = len(filtered_points_lon)-1
+    sorted_points_lon = sorted(filtered_points_lon, key=lambda x: x[1])
     l=0
     while l < max:
-        mid = (sorty[l+1][1] + sorty[l][1])/2
-        lons.append(mid)
+        mid = (sorted_points_lon[l+1][1] + sorted_points_lon[l][1])/2
+        lon_lines.append(mid)
         l+=1
 
-    x = np.searchsorted(lats, lati)
-    y = np.searchsorted(lons, long)
+    invert_lat = np.sort(np.array(lat_lines) * -1)
+    x = np.searchsorted(invert_lat, lat_vals*-1)
+    y = np.searchsorted(lon_lines, lon_vals)
 
     fml_dict = {}
     for i in range(len(x)):
-        fml_dict[(lati[i], long[i])] = (x[i], y[i])
+        fml_dict[(lat_vals[i], lon_vals[i])] = (x[i], y[i])
 
     labely = []
-    for i in range(len(lati)):
-        c = fml_dict[(lati[i], long[i])]
+    for i in range(len(lat_vals)):
+        c = fml_dict[(lat_vals[i], lon_vals[i])]
         labely.append(str(c))    
 
     fig = go.Figure()
-    for i in range(len(lats)):
-        for k in range(len(lons)-1):
+    for i in range(len(lat_lines)):
+        for k in range(len(lon_lines)-1):
             fig.add_trace(
                 go.Scattergeo(
-                    lon = [lons[k], lons[k+1]],
-                    lat = [lats[i], lats[i]],
+                    lon = [lon_lines[k], lon_lines[k+1]],
+                    lat = [lat_lines[i], lat_lines[i]],
                     mode = 'lines')
             )
-    for j in range(len(lons)):
+    for j in range(len(lon_lines)):
         fig.add_trace(
             go.Scattergeo(
-                lon = [lons[j], lons[j]],
+                lon = [lon_lines[j], lon_lines[j]],
                 lat = [min_lat-grid_h, max_lat+grid_h],
                 mode = 'lines')
         )
 
     fig.add_trace(go.Scattergeo(
-    lon = long,
-    lat = lati,
+    lon = lon_vals,
+    lat = lat_vals,
     hovertext=labely))
 
     fig.show()
