@@ -1,9 +1,8 @@
+import numpy as np
+from sklearn.neighbors import NearestNeighbors
 import pyreadr
-import datetime
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
-import sys
 
 def merge_position(rds_file, mapping_file):
     """
@@ -39,36 +38,27 @@ def merge_position(rds_file, mapping_file):
     return df
 
 
-def visualize_data(df, date, show_null=False):
+def table_to_array(df, mapping_file, pad_val):
     """
-    Visualizes chlorophyll for a given day on a map. 
-
-    args:
-    df: pandas dataframe that has columns: date chlorophyll meanlat meanlon
-    date: datetime.date format date
-    show_null: boolean indicating whether to visualize null values, defaults to false
-
-    returns:
-    None
-    """
-
-    date_df = df[df["date"] == date]
-    if not show_null:
-        date_df = date_df[~df["chlorophyll"].isnull()]
-
-    fig = px.scatter_mapbox(date_df, lat="meanlat", lon="meanlon", hover_name="gridid", 
-        color="chlorophyll", zoom=3, height=400, width=400)
-    fig.update_layout(mapbox_style="open-street-map")
-    fig.update_layout(margin={"r":0,"t":0,"l":0,"b":0})
-    fig.show()
-
-def visualize_grid(mapping_file):
-    """
-    Visualizes spatial grid 
+    Converts df from merge_position to an array of form:
+    [
+        [chlorophyll_x0_y0, chlorophyll_x1_y0, ...]
+        [chlorophyll_x0_y1, chlorophyll_x1_y1, ...]
+        ...
+    ]
+    This array represents the spatial relationship between data. 
+    The data at (0,0) is adjacent to (0,1) in lat/lon coordinates.
+    If data is not in a perfect rectangle, values are padded with pad_val
 
     Args:
+    df: dataframe with columns of data. Must have "meanlat" and "meanlon" columns (output of merge_position)
+    pad_val: value to pad array if spatial data is not perfectly rectangular
     mapping_file: path to file that contains mapping of gridid to lat, lon
+
+    Returns:
+    data_array: Array of shape (num_time_steps, num_data_types, num_unique_lat, num_unique_lon)
     """
+
     # load mapping file
     mapping = pyreadr.read_r(mapping_file)[None].to_numpy()
 
@@ -101,10 +91,10 @@ def visualize_grid(mapping_file):
         mid = (sorty[l+1][0] + sorty[l][0])/2
         lats.append(mid)
         l+=1
-
     # add first and last lines
     lats.append(sorty[0][0]-grid_h)
     lats.append(sorty[-1][0]+grid_h)
+    
 
     fig = go.Figure()
     for i in range(len(lats)):
@@ -130,28 +120,6 @@ def visualize_grid(mapping_file):
     fig.show()
 
 
-def main():
+table_to_array(merge_position("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS"), 
+    "data/Bering_full_grid_lookup_no_goa.RDS", -1)
 
-    # collect and parse inputs
-    DATE_ARG_LENGTH = 10 # format is MM/DD/YY, e.g. 06/01/2003
-    USAGE_ERROR_MSG = "    USAGE: python visualize.py <MM/DD/YYYY> [null]"
-    if len(sys.argv) < 2:
-        print("visualize.py: requires a date argument")
-        print(USAGE_ERROR_MSG)
-        exit()
-    date_arg = sys.argv[1]
-    if len(date_arg) != DATE_ARG_LENGTH:
-        print("visualize.py: incorrect date format")
-        print(USAGE_ERROR_MSG)
-        exit()
-    date = datetime.datetime.strptime(date_arg, "%m/%d/%Y").date()
-    show_null = False
-    if len(sys.argv) > 2:
-        show_null = sys.argv[2] == "null"
-
-    # visualize data
-    visualize_day(merge_position("data/merged_sst_ice_chl_par_" + str(date.year)
-        + ".RDS", "data/Bering_full_grid_lookup_no_goa.RDS"), date, show_null)
-
-if __name__ == '__main__':
-    main()
