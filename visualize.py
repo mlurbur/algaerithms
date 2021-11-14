@@ -86,6 +86,7 @@ def visualize_grid(mapping_file):
 
     lons = np.arange(start=min_lon-(grid_w/2), stop=max_lon+(grid_w/2),  step=grid_w)
 
+    # correct lats
     filtered_points = []
     for p in points:
         # check long is less than bound
@@ -93,7 +94,6 @@ def visualize_grid(mapping_file):
             filtered_points.append(p)
     
     lats = []
-
     max = len(filtered_points)-1
     sorty = sorted(filtered_points, key=lambda x: x[0])
     l=0
@@ -101,10 +101,38 @@ def visualize_grid(mapping_file):
         mid = (sorty[l+1][0] + sorty[l][0])/2
         lats.append(mid)
         l+=1
-
-    # add first and last lines
-    lats.append(sorty[0][0]-grid_h)
+    # add last lines
     lats.append(sorty[-1][0]+grid_h)
+
+    # correct lons
+
+    filtered_points = []
+    sorted_lats = sorted(lats)
+    for p in points:
+        # check long is less than bound
+        if (p[0] > sorted_lats[6]) and (p[0] < sorted_lats[7]):
+            filtered_points.append(p)
+
+    lons = []
+    max = len(filtered_points)-1
+    sorty = sorted(filtered_points, key=lambda x: x[1])
+    l=0
+    while l < max:
+        mid = (sorty[l+1][1] + sorty[l][1])/2
+        lons.append(mid)
+        l+=1
+
+    x = np.searchsorted(lats, lati)
+    y = np.searchsorted(lons, long)
+
+    fml_dict = {}
+    for i in range(len(x)):
+        fml_dict[(lati[i], long[i])] = (x[i], y[i])
+
+    labely = []
+    for i in range(len(lati)):
+        c = fml_dict[(lati[i], long[i])]
+        labely.append(str(c))    
 
     fig = go.Figure()
     for i in range(len(lats)):
@@ -125,7 +153,8 @@ def visualize_grid(mapping_file):
 
     fig.add_trace(go.Scattergeo(
     lon = long,
-    lat = lati))
+    lat = lati,
+    hovertext=labely))
 
     fig.show()
 
@@ -150,7 +179,7 @@ def main():
         show_null = sys.argv[2] == "null"
 
     # visualize data
-    visualize_day(merge_position("data/merged_sst_ice_chl_par_" + str(date.year)
+    visualize_data(merge_position("data/merged_sst_ice_chl_par_" + str(date.year)
         + ".RDS", "data/Bering_full_grid_lookup_no_goa.RDS"), date, show_null)
 
 if __name__ == '__main__':

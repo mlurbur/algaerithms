@@ -38,7 +38,7 @@ def merge_position(rds_file, mapping_file):
     return df
 
 
-def table_to_array(df, mapping_file, pad_val):
+def create_mapping_dict(mapping_file):
     """
     Converts df from merge_position to an array of form:
     [
@@ -76,6 +76,7 @@ def table_to_array(df, mapping_file, pad_val):
 
     lons = np.arange(start=min_lon-(grid_w/2), stop=max_lon+(grid_w/2),  step=grid_w)
 
+    # correct lats
     filtered_points = []
     for p in points:
         # check long is less than bound
@@ -83,7 +84,6 @@ def table_to_array(df, mapping_file, pad_val):
             filtered_points.append(p)
     
     lats = []
-
     max = len(filtered_points)-1
     sorty = sorted(filtered_points, key=lambda x: x[0])
     l=0
@@ -91,10 +91,38 @@ def table_to_array(df, mapping_file, pad_val):
         mid = (sorty[l+1][0] + sorty[l][0])/2
         lats.append(mid)
         l+=1
-    # add first and last lines
-    lats.append(sorty[0][0]-grid_h)
+    # add last lines
     lats.append(sorty[-1][0]+grid_h)
-    
+
+    # correct lons
+
+    filtered_points = []
+    sorted_lats = sorted(lats)
+    for p in points:
+        # check long is less than bound
+        if (p[0] > sorted_lats[6]) and (p[0] < sorted_lats[7]):
+            filtered_points.append(p)
+
+    lons = []
+    max = len(filtered_points)-1
+    sorty = sorted(filtered_points, key=lambda x: x[1])
+    l=0
+    while l < max:
+        mid = (sorty[l+1][1] + sorty[l][1])/2
+        lons.append(mid)
+        l+=1
+
+    x = np.searchsorted(lats, lati)
+    y = np.searchsorted(lons, long)
+
+    fml_dict = {}
+    for i in range(len(x)):
+        fml_dict[(lati[i], long[i])] = (x[i], y[i])
+
+    labely = []
+    for i in range(len(lati)):
+        c = fml_dict[(lati[i], long[i])]
+        labely.append(str(c))    
 
     fig = go.Figure()
     for i in range(len(lats)):
@@ -115,11 +143,13 @@ def table_to_array(df, mapping_file, pad_val):
 
     fig.add_trace(go.Scattergeo(
     lon = long,
-    lat = lati))
+    lat = lati,
+    hovertext=labely))
 
     fig.show()
 
+    return fml_dict
 
-table_to_array(merge_position("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS"), 
-    "data/Bering_full_grid_lookup_no_goa.RDS", -1)
+
+create_mapping_dict("data/Bering_full_grid_lookup_no_goa.RDS")
 
