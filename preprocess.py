@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.core.defchararray import index
 from sklearn.neighbors import NearestNeighbors
 import pyreadr
 import plotly.express as px
@@ -37,7 +38,7 @@ def merge_position(rds_file, mapping_file):
 
     return df
 
-def convert():
+def convert(df, lat_dict, lon_dict, pad_val, column_names):
     """
     Converts df from merge_position to an array of form:
     [
@@ -50,14 +51,90 @@ def convert():
     If data is not in a perfect rectangle, values are padded with pad_val
 
     Args:
-    df: dataframe with columns of data. Must have "meanlat" and "meanlon" columns (output of merge_position)
+    df: dataframe with columns of data. 
+        Must **have** the following columns: "meanlat", "meanlon", "date", all columns in column_names 
+        dict: dict mappings tuple of (lat,lon) -> (x,y)
+
+        Must **not have** the following columns: "x", "y", "t"
+
     pad_val: value to pad array if spatial data is not perfectly rectangular
-    mapping_file: path to file that contains mapping of gridid to lat, lon
 
     Returns:
     data_array: Array of shape (num_time_steps, num_data_types, num_unique_lat, num_unique_lon)
     """
-    pass
+
+    # TODO: 
+    # - add date range argument
+
+    x_list = lat_dict.values()
+    y_list = lon_dict.values()
+    x_max = max(x_list)
+    y_max = max(y_list)
+
+    # get unique and ordered dates and dict
+    date_array = df["date"].to_numpy()
+    unique_dates = np.sort(np.unique(date_array))
+    time_dict = {k: v for v, k in enumerate(unique_dates)}
+
+    df["x"] = df["meanlat"].map(lat_dict)
+    df["y"] = df["meanlon"].map(lon_dict)
+    # create column that indicates relative time of data
+    df["t"] = df["date"].map(time_dict)
+    date_index = df.columns.get_loc("date")
+    x_index = df.columns.get_loc("x")
+    y_index = df.columns.get_loc("y")
+    t_index = df.columns.get_loc("t")
+    num_cols = len(column_names)
+    column_indices = []
+    for col in column_names:
+        column_indices.append(df.columns.get_loc(col))
+
+    # convert df to np array
+    array_data = df.to_numpy()
+
+    big_boy = np.full((len(unique_dates), num_cols, x_max+1, y_max+1), pad_val).astype('float')
+
+    x_vals = array_data[:,x_index]
+    y_vals = array_data[:,y_index]
+    t_vals = array_data[:,t_index]
+    num_indices = len(x_vals)
+    col_holder = np.zeros((num_indices))
+    index_array = np.array((t_vals, col_holder, x_vals,y_vals)).T
+
+    for j in range(num_cols):
+        col_data = array_data[:,column_indices[j]]
+        # col_data = col_data.astype(float)
+        index_array[:,1] = j
+        index_array = index_array.astype(int)
+        big_boy[index_array[:,0], index_array[:,1], index_array[:,2], index_array[:,3]] = col_data
+
+
+    # for i in range(len(unique_dates)):
+    #     print(i)
+    #     # filter data to get info for curr date
+    #     date_logic = array_data[:, date_index] == unique_dates[i]
+    #     filtered_data = array_data[date_logic]
+
+    #     # get list of tuples of x,y of data
+    #     x_vals = filtered_data[:,x_index]
+    #     y_vals = filtered_data[:,y_index]
+    #     num_indices = len(x_vals)
+    #     date_i = np.full((num_indices),i)
+    #     col_holder = np.zeros((num_indices))
+    #     index_array = np.array((date_i, col_holder, x_vals,y_vals)).T
+
+    #     # get matching list of data values
+    #     # put values into array for each data type
+    #     for j in range(num_cols):
+    #         col_data = filtered_data[:,column_indices[j]]
+    #         index_array[:,1] = j
+    #         index_array = index_array.astype(int)
+    #         big_boy[index_array[:,0], index_array[:,1], index_array[:,2], index_array[:,3]] = col_data.astype(float)
+        
+
+    return big_boy
+
+    
 
 def create_mapping_dict(mapping_file):
     """
@@ -68,7 +145,8 @@ def create_mapping_dict(mapping_file):
     mapping_file: path to file that contains mapping of gridid to lat, lon
 
     Returns:
-    fml_dict: dict of form {(lat,long): (x,y)} for every point in mapping_file
+    lat_dict: dict of form {lat: x} for every point in mapping_file
+    lon_dict: dict of form {lon: y} for every point in mapping_file
     """
 
     # load mapping file
@@ -127,7 +205,11 @@ def create_mapping_dict(mapping_file):
     y = np.searchsorted(lon_lines, lon_vals)
 
     fml_dict = {}
+    lat_dict = {}
+    lon_dict = {}
     for i in range(len(x)):
+        lat_dict[lat_vals[i]] = x[i]
+        lon_dict[lon_vals[i]] = y[i]
         fml_dict[(lat_vals[i], lon_vals[i])] = (x[i], y[i])
 
     labely = []
@@ -157,10 +239,14 @@ def create_mapping_dict(mapping_file):
     lat = lat_vals,
     hovertext=labely))
 
-    fig.show()
+    # fig.show()
 
-    return fml_dict
+    return lat_dict, lon_dict
 
 
-create_mapping_dict("data/Bering_full_grid_lookup_no_goa.RDS")
+lat_dict, lon_dict = create_mapping_dict("data/Bering_full_grid_lookup_no_goa.RDS")
+df = merge_position("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS")
+data = convert(df, lat_dict, lon_dict, -1, ["chlorophyll", "sst"])
+
+np.save("data_test", data, allow_pickle=True)
 
