@@ -1,9 +1,10 @@
 import numpy as np
-from numpy.core.defchararray import index
-from sklearn.neighbors import NearestNeighbors
+import pandas as pd
+from pandas.core.dtypes import missing
 import pyreadr
 import plotly.express as px
 import plotly.graph_objects as go
+import time
 
 def merge_position(rds_file, mapping_file):
     """
@@ -38,7 +39,7 @@ def merge_position(rds_file, mapping_file):
 
     return df
 
-def convert(df, lat_dict, lon_dict, pad_val, column_names):
+def convert(df, lat_dict, lon_dict, column_names):
     """
     Converts df from merge_position to an array of form:
     [
@@ -48,24 +49,30 @@ def convert(df, lat_dict, lon_dict, pad_val, column_names):
     ]
     This array represents the spatial relationship between data. 
     The data at (0,0) is adjacent to (0,1) in lat/lon coordinates.
-    If data is not in a perfect rectangle, values are padded with pad_val
+    If data is not in a perfect rectangle, values are padded with -inf
+    Replaces nan with inf
+    
 
     Args:
     df: dataframe with columns of data. 
         Must **have** the following columns: "meanlat", "meanlon", "date", all columns in column_names 
         dict: dict mappings tuple of (lat,lon) -> (x,y)
-
         Must **not have** the following columns: "x", "y", "t"
-
-    pad_val: value to pad array if spatial data is not perfectly rectangular
+    lat_dict: dict mapping lat->int
+    lon_dict: dict mapping lon_int
+    column_names: column names of data to include in data_array
 
     Returns:
     data_array: Array of shape (num_time_steps, num_data_types, num_unique_lat, num_unique_lon)
     """
 
+    pad_val = -np.inf
+
     # TODO: 
     # - add date range argument
-
+    # - replace all nans in ice data with zeros
+    # convert nan to inf
+    # df = df.replace({np.nan: np.inf})
     x_list = lat_dict.values()
     y_list = lon_dict.values()
     x_max = max(x_list)
@@ -243,10 +250,65 @@ def create_mapping_dict(mapping_file):
 
     return lat_dict, lon_dict
 
+def gen_data(big_data, t, w):
+    """
+    Generates array of data to be used for test/train.
 
-lat_dict, lon_dict = create_mapping_dict("data/Bering_full_grid_lookup_no_goa.RDS")
-df = merge_position("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS")
-data = convert(df, lat_dict, lon_dict, -1, ["chlorophyll", "sst"])
+    Args:
+    big_data: output of convert()
+    t: num time steps to include
+    w: width of rect to cut around point
 
-np.save("data_test", data, allow_pickle=True)
+    Returns;
+    data: array of shape (N, t, w*w-1, num data types)
+    """
+
+    # find indices of all chlorophyll values that are not nan
+    # assume chlor data is first one (num_time_steps, num_data_types, num_unique_lat, num_unique_lon)
+
+    # let's pretend I just have chlor
+
+    # find location of missing values:
+    # miss = np.isnan(big_data)
+    miss = np.argwhere(np.isnan(big_data))
+    t = 20
+    n = 3
+    means = []
+    s = time.time()
+    for point in miss:
+
+        x = point[2]
+        y = point[3]
+        z = point[0]
+        if z > t:
+            slice = big_data[max(0,z-t):z,:, max(0,x-n):x+n+1,max(0,y-n):y+n+1]
+            print(slice) # all nans?
+            means.append(np.mean(slice))
+    e = time.time()
+
+    print(e-s)
+
+    chlor_logic = big_data < np.inf 
+    bounds_logic = big_data > -np.inf
+    total_logic = np.logical_and(chlor_logic, bounds_logic)
+    
+    print("i want to be sedated")
+
+    # slicing
+    # t = 4
+    # n = 1
+
+    # x = 10
+    # y = 10
+    # z = 50 # time
+    # slice = a[z-t:z,:, x-n:x+n+1,y-n:y+n+1]
+
+
+# lat_dict, lon_dict = create_mapping_dict("data/Bering_full_grid_lookup_no_goa.RDS")
+# df = merge_position("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS")
+# data = convert(df, lat_dict, lon_dict, ["chlorophyll"])
+
+# np.save("data_test", data, allow_pickle=True)
+# print("done")
+gen_data(np.load("data_test.npy"), 8, 2)
 
