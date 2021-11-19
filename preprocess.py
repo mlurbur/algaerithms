@@ -326,13 +326,15 @@ def gen_data(original_chlor_data, data_array_list, t, n):
     n: num neighbors to include (kinda)
 
     Returns:
-    data: array of shape (N, t, (2n+1)(2n+1)-1, num data types)
+    data_array: data of shape: (N, t, (2n+1)(2n+1)-1, num data types)
+    gt_values: ground truth values of shape (N,)
     """
 
     # find location of ground truth values, assume that non data regions are filled with -np.inf
     g_t_indices = np.argwhere(original_chlor_data > -np.inf)
     _, _, max_x, max_y = original_chlor_data.shape
-    data = []
+    data_array = []
+    gt_values = []
     # get data slice from filled_data for each ground truth
     for point in g_t_indices:
             x = point[2]
@@ -359,16 +361,17 @@ def gen_data(original_chlor_data, data_array_list, t, n):
                         break
                     # remove gt val
                     flat_slice = np.ndarray.flatten(slice)
-                    i = np.floor(len(flat_slice)/2)
-                    data_bit.append(np.delete(flat_slice, int(i)))
+                    i = int(np.floor(len(flat_slice)/2))
+                    data_bit.append(np.delete(flat_slice, i))
                 if data_bit != []:
                     data_bit = np.array(data_bit)
-                    data.append(data_bit)
+                    data_array.append(data_bit)
+                    gt_values.append(flat_slice[i])
 
-    return np.array(data)
+    return np.asarray(data_array), np.asarray(gt_values)
 
 
-def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_file):
+def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_data_file, save_gt_file):
     """
     Performs data preprocessing. Saves final data in save_file.
 
@@ -380,7 +383,8 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
     max_day: maximum julian day to include
     time_window: time window to include in data
     num_neighbors: num neighbors (kinda) to include in data
-    save_file: file path to save data file
+    save_data_file: file path to save data
+    save_gt_file: file path to save ground truth values
     """
 
     if params_of_interest[0] != "chlorophyll":
@@ -404,16 +408,18 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
     # replace original data with filled data in data_array
     data_array_with_filled = data_array
     data_array_with_filled[0] = filled_data
-    data = gen_data(data_array[0], data_array_with_filled, time_window, num_neighbors)
+    data_array, gt_array= gen_data(data_array[0], data_array_with_filled, time_window, num_neighbors)
 
-    print("Saving data to", save_file)
-    np.save(save_file, data, allow_pickle=True)
+    print("Saving data to", save_data_file)
+    np.save(save_data_file, data_array, allow_pickle=True)
+    print("Saving ground truth values to", save_gt_file)
+    np.save(save_gt_file, gt_array, allow_pickle=True)
     end = time.time()
     total_time = end - start
     print("Preprocessing complete. Took ", total_time, "seconds.")
-    print("Total data points generated:", data.shape[0])
+    print("Total data points generated:", gt_array.shape[0])
 
 # example call to preprocess
 preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "ice"],
-    50, 244, 3, 1, "data.npy")
+    50, 244, 3, 1, "data.npy", "gt.npy")
 
