@@ -411,6 +411,7 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
     end = time.time()
     total_time = end - start
     print("Preprocessing complete. Took ", total_time, "seconds.")
+    print("Total data points generated:", data.shape[0])
 
 # example call to preprocess
 preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "ice"],
