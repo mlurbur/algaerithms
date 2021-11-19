@@ -342,32 +342,32 @@ def gen_data(original_chlor_data, data_array_list, t, n):
             z = point[0]
             if z > t:
                 data_bit = []
-                for data_type in data_array_list:
+                for i in range(len(data_array_list)):
                     x_min = x-n
                     x_max = x+n+1
                     y_min = y-n
                     y_max = y+n+1
                     # check that slice is in bounds of data
                     if (x_min < 0) or (y_min < 0):
-                        data_bit = []
                         break
                     if (x_max > max_x-1) or (y_max > max_y-1):
-                        data_bit = []
                         break
-                    slice = data_type[z-t:z,0, x_min:x_max,y_min:y_max]
+                    slice = data_array_list[i][z-t:z,0, x_min:x_max,y_min:y_max]
                     # skip if contains nan or inf
                     if (np.isnan(slice).any() or np.isinf(slice).any()):
-                        data_bit = []
                         break
                     # remove gt val
                     flat_slice = np.ndarray.flatten(slice)
-                    i = int(np.floor(len(flat_slice)/2))
-                    data_bit.append(np.delete(flat_slice, i))
-                if data_bit != []:
+                    j = int(np.floor(len(flat_slice)/2))
+                    data_bit.append(np.delete(flat_slice, j))
+                    if i == 0: # only add gt of chlorophyll
+                        gt_val = flat_slice[j]
+                        
+                # only keep data_bit if all data were included
+                if len(data_bit) == len(data_array_list):
                     data_bit = np.array(data_bit)
                     data_array.append(data_bit)
-                    gt_values.append(flat_slice[i])
-
+                    gt_values.append(gt_val)
     return np.asarray(data_array), np.asarray(gt_values)
 
 
