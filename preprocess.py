@@ -1,47 +1,14 @@
 import numpy as np
 import pyreadr
-import plotly.express as px
-import plotly.graph_objects as go
+from plotly.graph_objects import Figure, Scattergeo
 import time
+from common import merge_position
 
 # TODO: 
 # - Make gen_data look forward in time (right now just looks back)
 # - Figure out what to do with other data at ground truth point and time. 
 #   As of now, this gets removed because the data array would have impossible shape
 # - handle gt values at edge of "map". As of now, if window doesn't fit, the gt is skipped
-
-def merge_position(data_file, mapping_file):
-    """
-    Loads .RDS file as a pandas dataframe and adds lat and lon data column using the mapping file.
-
-    Files in data dir should have the following columns in order: 
-    date chl_n par_n chlorophyll par sst_n ice_n sst ice depth gridid index
-
-    args:
-    data_file: path to .RDS file containing data
-    mapping_file: path to file that contains mapping of gridid to lat, lon
-
-    returns:
-    df: pandas dataframe with columns: date chlorophyll par sst ice depth gridid meanlat meanlon
-    """
-
-    grid_lat_dict = {} # dict that maps gridid -> lat
-    grid_lon_dict = {} # dict that maps gridid -> lon
-    mapping = pyreadr.read_r(mapping_file)[None].to_numpy()
-
-    for i in mapping:
-        grid_lat_dict[i[0]] = i[1]
-        grid_lon_dict[i[0]] = i[2]
-
-    df = pyreadr.read_r(data_file)[None]
-
-    # drop columns
-    df = df.drop(["chl_n", "par_n", "sst_n", "ice_n", "index"], axis=1)
-    # add meanlat meanlon columns
-    df["meanlat"] = df["gridid"].map(grid_lat_dict)
-    df["meanlon"] = df["gridid"].map(grid_lon_dict)
-
-    return df
 
 def create_mapping_dict(mapping_file):
     """
@@ -59,94 +26,105 @@ def create_mapping_dict(mapping_file):
     # load mapping file
     mapping = pyreadr.read_r(mapping_file)[None].to_numpy()
 
+    # get mapping's latitudinal and longitudinal values
     lat_vals, lon_vals = mapping[:,1], mapping[:,2]
-    points = np.array((lat_vals,lon_vals)).T
-    lat_arg = np.argsort(lat_vals)
-    lon_arg = np.argsort(lon_vals)
-    max_lat = lat_vals[lat_arg[-1]]
-    min_lat = lat_vals[lat_arg[0]]
-    min_lon = lon_vals[lon_arg[0]]
-    max_lon = lon_vals[lon_arg[-1]]
-    grid_w = 1.0125
-    grid_h = 0.525
 
+    # build array of all points ((lat_val, lon_val) pairs)
+    points = np.array((lat_vals,lon_vals)).T
+
+    # get the max and min latitude/longitudes
+    lat_arg, lon_arg = np.argsort(lat_vals), np.argsort(lon_vals)
+    min_lat, max_lat = lat_vals[lat_arg[0]], lat_vals[lat_arg[-1]]
+    min_lon, max_lon = lon_vals[lon_arg[0]], lon_vals[lon_arg[-1]]
+
+    # define the individual grid's width and height
+    grid_w, grid_h = 1.0125, 0.525
+
+    # using min/max_lon, and grid_w, create array with longitudinal line values
     lon_lines = np.arange(start=min_lon-(grid_w/2), stop=max_lon+(grid_w/2),  step=grid_w)
 
-    # generate latitude lines by calculating midpoints between 
-    # all lat values for points less than the second lon line (easier to visualize with plot)
-    filtered_points_lat = []
-    for p in points:
-        # check long is less than bound
-        if p[1] < lon_lines[1]:
-            filtered_points_lat.append(p)
-    
+    # generate latitudinal line values by calculating latitudinal midpoints between latitudinal values in first "column" (points left of second longitudinal line)
+    points_in_first_col = list(filter(lambda point : point[1] < lon_lines[1], points))
     lat_lines = []
-    max = len(filtered_points_lat)-1
-    sorted_points_lat = sorted(filtered_points_lat, key=lambda x: x[0])
-    l=0
-    while l < max:
-        mid = (sorted_points_lat[l+1][0] + sorted_points_lat[l][0])/2
-        lat_lines.append(mid)
-        l+=1
+    sorted_points_lat = sorted(points_in_first_col, key=lambda x: x[0])
+    for i in range(len(points_in_first_col) - 1):
+        lat_lines.append((sorted_points_lat[i+1][0] + sorted_points_lat[i][0])/2)
 
-    # Recalculate lon_lines to get them more centered using a similar technique as above
-    # this time, using points between the 7th and 8th lat line (again, easier to understand by looking at graph)
-    filtered_points_lon = []
-    sorted_lats = sorted(lat_lines)
-    for p in points:
-        # check long is less than bound
-        if (p[0] > sorted_lats[6]) and (p[0] < sorted_lats[7]):
-            filtered_points_lon.append(p)
-
+    # recalculate lon_lines to get them more centered using a similar technique as above, this time, using points between the 7th and 8th latitudinal line
+    points_in_seventh_row = list(filter(lambda point : point[0] > lat_lines[6] and point[0] < lat_lines[7], points))
     lon_lines = []
-    max = len(filtered_points_lon)-1
-    sorted_points_lon = sorted(filtered_points_lon, key=lambda x: x[1])
-    l=0
-    while l < max:
-        mid = (sorted_points_lon[l+1][1] + sorted_points_lon[l][1])/2
-        lon_lines.append(mid)
-        l+=1
+    sorted_points_lon = sorted(points_in_seventh_row, key=lambda x: x[1])
+    for i in range(len(points_in_seventh_row) - 1):
+        lon_lines.append((sorted_points_lon[i+1][1] + sorted_points_lon[i][1]) / 2)
+
+    # potential todo: this can be improved (remedying duplicates) by making a
+    # grid_coord ((0,1)) -> point_coord (((lat_val, lon_val), dist)) dict and
+    # using a k-means-esque method to get the point_coord with the lowest dist
+    # to each midpoint value (will also need a dict mapping grid_coord to
+    # midpoint_coord for calculating distances). you iterate over all of the
+    # first dictionary's keys (grid_coords) until a while condition checking
+    # if there are still point_coords left to assign breaks. though with this
+    # method, every point in the map would need to be gridded (otherwise the
+    # loop would run infinitely)
+
+    # ...
+    # x = np.searchsorted(invert_lat, lat_midpoint_vals * -1)
+    # y = np.searchsorted(lon_lines, lon_midpoint_vals * -1)
+    #
+    # 
+    # while points:
+    #     for grid_coord in zip(x,y):
+    #         point_with_least_dist, dist = find_point_with_least_dist(grid_to_midpoint[grid_coord], points)
+    #         if not grid_to_point[grid_coord]:
+    #             grid_to_point[grid_coord] = (point_with_least_dist, dist)
+    #             points.remove(point_with_least_dist)
+    #             continue
+    #         if grid_to_point[grid_coord][1] > dist:
+    #             if grid_to_point[grid_coord] is not point_with_least_dist:
+    #                 points.append(grid_to_point[grid_coord][0])
+    #             grid_to_point[grid_coord] = (point_with_least_dist, dist)
 
     invert_lat = np.sort(np.array(lat_lines) * -1)
-    x = np.searchsorted(invert_lat, lat_vals*-1)
+    x = np.searchsorted(invert_lat, lat_vals * -1)
     y = np.searchsorted(lon_lines, lon_vals)
 
-    fml_dict = {}
     lat_dict = {}
     lon_dict = {}
+    fml_dict = {}
+
+    # populate coordinate dictionaries
     for i in range(len(x)):
         lat_dict[lat_vals[i]] = x[i]
         lon_dict[lon_vals[i]] = y[i]
         fml_dict[(lat_vals[i], lon_vals[i])] = (x[i], y[i])
 
+    # generate text labels
     labely = []
     for i in range(len(lat_vals)):
         c = fml_dict[(lat_vals[i], lon_vals[i])]
-        labely.append(str(c))    
+        labely.append(str(c))
 
-    fig = go.Figure()
+    # draw the figure
+    fig = Figure()
     for i in range(len(lat_lines)):
         for k in range(len(lon_lines)-1):
-            fig.add_trace(
-                go.Scattergeo(
-                    lon = [lon_lines[k], lon_lines[k+1]],
-                    lat = [lat_lines[i], lat_lines[i]],
-                    mode = 'lines')
-            )
+            fig.add_trace(Scattergeo(
+                lon = [lon_lines[k], lon_lines[k+1]],
+                lat = [lat_lines[i], lat_lines[i]],
+                mode = 'lines'))
     for j in range(len(lon_lines)):
-        fig.add_trace(
-            go.Scattergeo(
-                lon = [lon_lines[j], lon_lines[j]],
-                lat = [min_lat-grid_h, max_lat+grid_h],
-                mode = 'lines')
-        )
+        fig.add_trace(Scattergeo(
+            lon = [lon_lines[j], lon_lines[j]],
+            lat = [min_lat-grid_h, max_lat+grid_h],
+            mode = 'lines'))
 
-    fig.add_trace(go.Scattergeo(
-    lon = lon_vals,
-    lat = lat_vals,
-    hovertext=labely))
+    fig.add_trace(Scattergeo(
+        lon = lon_vals,
+        lat = lat_vals,
+        hovertext=labely))
 
-    # fig.show()
+    # uncomment to see the grid divisions ((x,y) coordinates of each point)
+    fig.show()
 
     return lat_dict, lon_dict
 
@@ -182,11 +160,14 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
     min_d: minimum julian day to include
     max_d: maximum julian day to include
 
+    QUESTION: Are these still the min_d'th and max_d'th julian days? Does the
+    data need to be complete for this (365 measurements/year) to be true?
+
     Returns:
     data_array_list: list of arrays of shape (num_time_steps, 1, num_unique_lat, num_unique_lon)
     """
 
-    pad_val = -np.inf
+    PAD_VAL = -np.inf
 
     x_list = lat_dict.values()
     y_list = lon_dict.values()
@@ -211,9 +192,7 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
     y_index = df.columns.get_loc("y")
     t_index = df.columns.get_loc("t")
     num_cols = len(column_names)
-    column_indices = []
-    for col in column_names:
-        column_indices.append(df.columns.get_loc(col))
+    column_indices = [df.columns.get_loc(col_name) for col_name in column_names]
 
     # convert df to np array
     array_data = df.to_numpy()
@@ -240,13 +219,13 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
 
     data_array_list = []
     for j in range(num_cols):
-        big_boy = np.full((total_days, 1, x_max+1, y_max+1), pad_val).astype('float')
+        big_boy = np.full((total_days, 1, x_max+1, y_max+1), PAD_VAL).astype('float')
         col_data = array_data[:,column_indices[j]]
 
         index_array = index_array.astype(int)
 
         big_boy[index_array[:,0], 0, index_array[:,2], index_array[:,3]] = col_data
-        time_trimmed = big_boy[min_d:max_d+1]
+        time_trimmed = big_boy[min_d:max_d+1] 
         data_array_list.append(time_trimmed)
         
     return data_array_list
@@ -422,4 +401,3 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
 # example call to preprocess
 preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "ice"],
     50, 244, 3, 1, "data.npy", "gt.npy")
-
