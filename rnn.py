@@ -1,33 +1,31 @@
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras import Model
-from preprocess import gen_data, fill_missing
+from tensorflow.keras.losses import MeanSquaredError
 
 import timeit
 
 
 class Model(tf.keras.Model):
-    def __init__(self, vocab_size):
+    def __init__(self, time_step):
         """
         Initilize all the hyper parameters for the LSTM model
         """
 
         super(Model, self).__init__()
 
-        self.vocab_size = vocab_size
-        self.window_size = 20
+        self.hidden_size = 256
+        self.time_step = time_step
         self.embedding_size = 128
-        self.batch_size = 128
+        self.batch_size = 256
         self.learning_rate = 0.01
-        self.epochs = 1
-
-        self.E = tf.Variable(tf.random.normal([self.vocab_size, self.embedding_size], stddev=0.1))
+        self.epochs = 5
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-        self.lstm_layer1 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=True)
-        self.dense1 = tf.keras.layers.Dense(self.vocab_size, activation='relu')
-        self.dense2 = tf.keras.layers.Dense(1, activation='softmax')
+        self.lstm_layer1 = tf.keras.layers.LSTM(1028, return_sequences=False, return_state=False)
+        self.dense1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.dense2 = tf.keras.layers.Dense(1)
 
 
     def call(self, inputs, initial_state):
@@ -40,15 +38,18 @@ class Model(tf.keras.Model):
         Returns
         """
 
-        embedding = tf.nn.embedding_lookup(self.E, inputs)
-        whole_seq_output, final_memory_sate, final_carry_state = self.lstm_layer1(embedding)
-        outputs = self.dense1(whole_seq_output)
+        lstm_output= self.lstm_layer1(inputs)
+        hidden = self.dense1(lstm_output)
+        predictions = self.dense2(hidden)
 
-        return outputs,[final_memory_sate, final_carry_state]
+        return predictions
 
-    def loss(self, probs, labels):
-
-        return tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels,probs,from_logits=False,))
+    def loss(self, pred, labels):
+        """
+        Calculates MSE loss
+        """
+        mse = MeanSquaredError()
+        return mse(labels, pred)
 
 def reshape_inputs_and_labels(inputs, labels, window_size):
     """
@@ -66,21 +67,28 @@ def reshape_inputs_and_labels(inputs, labels, window_size):
 
 def train(model, train_inputs, train_labels):
 
-    train_x, train_y = reshape_inputs_and_labels(train_inputs, train_labels, model.window_size)
+    # train_x, train_y = reshape_inputs_and_labels(train_inputs, train_labels, model.time_step)
 
-    for i in range(0, len(train_x), model.batch_size):
-        batch_x = train_x[i:i+model.batch_size]
-        batch_y = train_y[i:i+model.batch_size]
+    total_loss = 0
+    step = 0
+
+    for i in range(0, len(train_inputs), model.batch_size):
+        batch_x = train_inputs[i:i+model.batch_size]
+        batch_y = train_labels[i:i+model.batch_size]
         with tf.GradientTape() as tape:
-            probs, final_state = model.call(batch_x, None)
-            loss = model.loss(probs, batch_y)
+            pred = model.call(batch_x, None)
+            loss = model.loss(pred, batch_y)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        total_loss += loss
+        step += 1
+    
+    return total_loss/step
 
 
 def test(model, test_inputs, test_labels):
 
-    test_x, test_y = reshape_inputs_and_labels(test_inputs, test_labels, model.window_size)
+    test_x, test_y = reshape_inputs_and_labels(test_inputs, test_labels, model.time_step)
 
     curr_loss = 0
     step = 0
@@ -100,26 +108,16 @@ def generate_inputs_and_labels(data):
     return data[:-1], data[1:]
 
 def main():
-    original_data = np.load("data.npy")
-    time_step = 10
-    batch_size = 128
-    data = gen_data(original_data, fill_missing(original_data), time_step, batch_size)
+    print("Running RNN.py")
+    train_data = np.load("data.npy")
+    ground_truth = np.load("gt.npy")
 
-    print(data.shape)
-
-    model = Model(len(vocab_dict))
+    model = Model(train_data.shape[1])
 
     for i in range(model.epochs):
-        print("epoch {}".format(i + 1))
-        train(model, train_inputs, train_labels)
+        loss = train(model, train_data, ground_truth)
+        print("epoch: {} loss: {}".format(i + 1, loss))
 
-    perplexity = test(model, test_inputs, test_labels)
-    print("test perplexity = {}".format(perplexity))
-
-    print("sample_n=10")
-    generate_sentence("he", 6, vocab_dict, model, sample_n=10)
-    print("sample_n=20")
-    generate_sentence("he", 6, vocab_dict, model, sample_n=20)
 
 
 if __name__ == '__main__':
