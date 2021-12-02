@@ -23,10 +23,13 @@ class Model(tf.keras.Model):
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-        self.lstm_layer1 = tf.keras.layers.LSTM(1028, return_sequences=False, return_state=False)
+        self.lstm_layer1 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=False)
+        self.lstm_layer2 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=False)
+        self.lstm_layer3 = tf.keras.layers.LSTM(1028, return_sequences=False, return_state=False)
         self.dense1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.dense2 = tf.keras.layers.Dense(1)
-
+        self.dense2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.dense3 = tf.keras.layers.Dense(1)
+        
 
     def call(self, inputs, initial_state):
         """
@@ -38,9 +41,12 @@ class Model(tf.keras.Model):
         Returns
         """
 
-        lstm_output= self.lstm_layer1(inputs)
-        hidden = self.dense1(lstm_output)
-        predictions = self.dense2(hidden)
+        lstm_output1 = self.lstm_layer1(inputs)
+        lstm_output2 = self.lstm_layer2(lstm_output1)
+        lstm_output3 = self.lstm_layer3(lstm_output2)
+        hidden1 = self.dense1(lstm_output3)
+        hidden2 = self.dense2(hidden1)
+        predictions = self.dense3(hidden2)
 
         return predictions
 
@@ -108,12 +114,12 @@ def generate_inputs_and_labels(data):
     return data[:-1], data[1:]
 
 def main():
-    print("Running RNN.py")
     train_data = np.load("data.npy")
     ground_truth = np.load("gt.npy")
 
     model = Model(train_data.shape[1])
 
+    print("starting train")
     for i in range(model.epochs):
         loss = train(model, train_data, ground_truth)
         print("epoch: {} loss: {}".format(i + 1, loss))
