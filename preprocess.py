@@ -500,8 +500,16 @@ def test_stuff():
     assert data_array.shape == (18, 2, 26), "Damn"
     assert gt_array.shape == (18,), "Damn"
 
-    data_array, gt_array = gen_data(original_copy, [test_filled_chlor], 2, 1)
+    data_array, gt_array = gen_data(original_copy, [test_filled_chlor, ice], 2, 1)
     assert np.array_equal(gt_array, np.array([3,4])), "Damn"
+
+    # test that if land is in range, gt val is not generated
+    test_original_chlor = np.ones((5,1,3,3))
+    test_original_chlor[:,0,0,0] = -np.inf
+    original_copy = np.copy(test_original_chlor)
+    test_filled_chlor = fill_missing(test_original_chlor)
+    data_array, gt_array = gen_data(original_copy, [test_filled_chlor], 2, 1)
+    assert np.array_equal(gt_array, np.array([])), "Damn"
 
     print("Tests for gen_data passed")
     
