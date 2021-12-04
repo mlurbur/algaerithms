@@ -91,6 +91,10 @@ def train(model, train_inputs, train_labels):
     
     return total_loss/step
 
+def accuracy(labels, predicted):
+    difference = labels - predicted
+    return difference
+
 
 def test(model, test_inputs, test_labels):
 
