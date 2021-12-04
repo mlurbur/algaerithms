@@ -19,7 +19,7 @@ class Model(tf.keras.Model):
         self.embedding_size = 128
         self.batch_size = 256
         self.learning_rate = 0.01
-        self.epochs = 5
+        self.epochs = 10
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
@@ -58,7 +58,7 @@ class Model(tf.keras.Model):
         return mse(labels, pred)
     
     def accuracy(self, labels, predicted):
-        abs_error = np.absolute((labels - predicted)/predicted)
+        abs_error = np.absolute((predicted - labels)/labels)
         return 100 * np.mean(abs_error)
 
 def reshape_inputs_and_labels(inputs, labels, window_size):
@@ -77,8 +77,6 @@ def reshape_inputs_and_labels(inputs, labels, window_size):
 
 def train(model, train_inputs, train_labels):
 
-    # train_x, train_y = reshape_inputs_and_labels(train_inputs, train_labels, model.time_step)
-
     total_loss = 0
     step = 0
 
@@ -96,27 +94,41 @@ def train(model, train_inputs, train_labels):
     return total_loss/step
 
 
-
 def test(model, test_inputs, test_labels):
-
-    test_x, test_y = reshape_inputs_and_labels(test_inputs, test_labels, model.time_step)
 
     curr_loss = 0
     step = 0
+    all_pred = np.zeros(test_labels.shape)
 
-    for i in range(0, len(test_x), model.batch_size):
-        batch_x = test_x[i:i+model.batch_size]
-        batch_y = test_y[i:i+model.batch_size]
-        probs, final_state = model.call(batch_x, None)
-        loss = model.loss(probs, batch_y)
+    for i in range(0, len(test_inputs), model.batch_size):
+        batch_x = test_inputs[i:i+model.batch_size]
+        batch_y = test_labels[i:i+model.batch_size]
+        pred = model.call(batch_x, None)
+        loss = model.loss(pred, batch_y)
+        all_pred[i:i+model.batch_size] = pred[:,0]
         step+=1
         curr_loss+=loss
 
-    return np.exp(curr_loss/step)
+    return model.accuracy(test_labels, all_pred), curr_loss/step
+
+def average(inputs, labels):
+    chlor = inputs[:,0,:]
+    avg = np.mean(chlor, axis=1)
+    acc = 100 * np.mean(np.absolute((avg - labels)/labels))
+    return acc
 
 
-def generate_inputs_and_labels(data):
-    return data[:-1], data[1:]
+def split_data(inputs, labels):
+    shuffler = np.random.permutation(len(labels))
+    labels_shuffled = labels[shuffler]
+    inputs_shuffled = inputs[shuffler]
+    split = (len(labels_shuffled) * 8)//10
+    train_inputs = inputs_shuffled[:split]
+    test_inputs = inputs_shuffled[split + 1:]
+    train_labels = labels_shuffled[:split]
+    test_labels = labels_shuffled[split + 1:]
+
+    return train_inputs, train_labels, test_inputs, test_labels
 
 def main():
     train_data = np.load("data.npy")
@@ -126,8 +138,10 @@ def main():
 
     print("starting train")
     for i in range(model.epochs):
-        loss = train(model, train_data, ground_truth)
-        print("epoch: {} loss: {}".format(i + 1, loss))
+        train_inputs, train_labels, test_inputs, test_labels = split_data(train_data, ground_truth)
+        train_loss = train(model, train_inputs, train_labels)
+        test_acc, test_loss = test(model, test_inputs, test_labels)
+        print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}, avg_err: {}".format(i + 1, train_loss, test_loss, test_acc, average(test_inputs, test_labels)))
 
 
 
