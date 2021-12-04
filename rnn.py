@@ -16,7 +16,6 @@ class Model(tf.keras.Model):
 
         self.hidden_size = 256
         self.time_step = time_step
-        self.embedding_size = 128
         self.batch_size = 256
         self.learning_rate = 0.01
         self.epochs = 10
@@ -82,6 +81,7 @@ def train(model, train_inputs, train_labels):
 
     for i in range(0, len(train_inputs), model.batch_size):
         batch_x = train_inputs[i:i+model.batch_size]
+        batch_x = tf.reshape(batch_x, (batch_x.shape[0],batch_x.shape[1]*batch_x.shape[2]))
         batch_y = train_labels[i:i+model.batch_size]
         with tf.GradientTape() as tape:
             pred = model.call(batch_x, None)
