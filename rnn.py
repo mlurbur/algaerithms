@@ -94,20 +94,20 @@ def train(model, train_inputs, train_labels):
 
 def test(model, test_inputs, test_labels):
 
-    test_x, test_y = reshape_inputs_and_labels(test_inputs, test_labels, model.time_step)
+    # test_x, test_y = reshape_inputs_and_labels(test_inputs, test_labels, model.time_step)
 
     curr_loss = 0
     step = 0
 
-    for i in range(0, len(test_x), model.batch_size):
-        batch_x = test_x[i:i+model.batch_size]
-        batch_y = test_y[i:i+model.batch_size]
-        probs, final_state = model.call(batch_x, None)
-        loss = model.loss(probs, batch_y)
+    for i in range(0, len(test_inputs), model.batch_size):
+        batch_x = test_inputs[i:i+model.batch_size]
+        batch_y = test_labels[i:i+model.batch_size]
+        pred = model.call(batch_x, None)
+        loss = model.loss(pred, batch_y)
         step+=1
         curr_loss+=loss
 
-    return np.exp(curr_loss/step)
+    return None
 
 
 def generate_inputs_and_labels(data):
