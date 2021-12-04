@@ -67,6 +67,8 @@ def compare_two(data1, data2, file_path):
     ax2 = fig.add_subplot(122, projection='3d')
     ax1.title.set_text('Original data')
     ax2.title.set_text('Filled data')
+    ax1.set_zlabel("Chlorphyll")
+    ax2.set_zlabel("Chlorphyll")
     ax1.axes.set_zlim3d(bottom=0, top=max_height) 
     ax2.axes.set_zlim3d(bottom=0, top=max_height)
     ax1.axes.set_xlim3d(left=0, right=23) 
