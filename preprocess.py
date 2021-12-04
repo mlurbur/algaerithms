@@ -10,10 +10,12 @@ from tqdm import tqdm
 from common import merge_position, visualize_day_from_array, visualize_two_as_gif
 
 # TODO: 
+# - get a metric of % error based on averaging so we have a baseline comparison for model performance
 # - Make gen_data look forward in time (right now just looks back)
 # - Figure out what to do with other data at ground truth point and time. 
 #   As of now, this gets removed because the data array would have impossible shape
 # - handle gt values at edge of "map". As of now, if window doesn't fit, the gt is skipped
+
 
 def create_mapping_dict(mapping_file):
     """
@@ -310,7 +312,7 @@ def gen_data(original_chlor_data, data_array_list, t, n):
     n: num neighbors to include (kinda)
 
     Returns:
-    data_array: data of shape: (N, num_data_types, (t*(2n+1)^2) -1)
+    data_array: data of shape: (N, t, num_data_types * (t*(2n+1)^2) -1)
     gt_values: ground truth values of shape (N,)
     """
 
@@ -324,9 +326,10 @@ def gen_data(original_chlor_data, data_array_list, t, n):
             x = point[1]
             y = point[2]
             z = point[0]
-            if z >= t-1:
-                data_bit = []
+            if z >= t:
                 # loop through all data types for a given time period
+                chlor_valid = False
+                data_count = 0
                 for i in range(len(data_array_list)):
                     x_min = x-n
                     x_max = x+n
@@ -337,23 +340,24 @@ def gen_data(original_chlor_data, data_array_list, t, n):
                         break
                     if (x_max > max_x-1) or (y_max > max_y-1):
                         break
-                    slice = data_array_list[i][z-(t-1):z+1, x_min:x_max+1,y_min:y_max+1]
+                    slice = data_array_list[i][z-t:z, x_min:x_max+1,y_min:y_max+1]
                     # skip if contains nan or inf
                     if (np.isnan(slice).any() or np.isinf(slice).any()):
                         break
                     # remove gt val
-                    flat_slice = np.ndarray.flatten(slice)
-                    middle = np.floor(((x_max+1)-x_min)/2)
-                    # this calculation is shitty
-                    j = -int(middle*((x_max+1)-x_min)+middle)-1
+                    flatter_slice = np.reshape(slice, (t, slice.shape[1] * slice.shape[2]))
                     if i == 0: # only add gt of chlorophyll
-                        gt_val = flat_slice[j]
-                    data_bit.append(np.delete(flat_slice, j))
+                        fat_slice = flatter_slice
+                        gt_val = data_array_list[0][z, x, y]
+                        chlor_valid = True
+                        data_count += 1
+                    elif chlor_valid:
+                        fat_slice = np.concatenate((fat_slice,flatter_slice), axis=1)
+                        data_count += 1
                         
                 # only keep data_bit if all data were included
-                if len(data_bit) == len(data_array_list):
-                    data_bit = np.array(data_bit)
-                    data_array.append(data_bit)
+                if data_count == len(data_array_list):
+                    data_array.append(fat_slice)
                     gt_values.append(gt_val)
     return np.asarray(data_array), np.asarray(gt_values)
 
@@ -483,28 +487,28 @@ def test_stuff():
     fake_missing[:,2,:] = -np.inf
     filled = fill_missing(fake_missing)
 
-    assert np.array_equal(fake_missing[10,0,:], [1,1,1]), "Damn"
-    assert np.array_equal(fake_missing[:,2,:], fake_missing[:,2,:]), "Damn"
+    assert np.array_equal(filled[10,0,:], [1,1,1]), "Damn"
+    assert np.array_equal(filled[:,2,:], fake_missing[:,2,:]), "Damn"
     
     print("Tests for fill_missing passed")
 
     # testing gen_data
     test_original_chlor = np.ones((5,3,3))
     test_original_chlor[0,1,1] = 1
-    test_original_chlor[1,1,1] = 3
+    test_original_chlor[1,1,1] = 2
     test_original_chlor[2,1,1] = np.nan
     test_original_chlor[3,1,1] = 4
-    test_original_chlor[4,1,1] = np.nan
+    test_original_chlor[4,1,1] = 5
     original_copy = np.copy(test_original_chlor)
     test_filled_chlor = fill_missing(test_original_chlor)
 
     data_array, gt_array= gen_data(np.ones((20,3,3)), [np.ones((20,3,3)), ice], 3, 1)
 
-    assert data_array.shape == (18, 2, 26), "Damn"
-    assert gt_array.shape == (18,), "Damn"
+    assert data_array.shape == (17, 3, 2*9), "Damn"
+    assert gt_array.shape == (17,), "Damn"
 
     data_array, gt_array = gen_data(original_copy, [test_filled_chlor, ice], 2, 1)
-    assert np.array_equal(gt_array, np.array([3,4])), "Damn"
+    assert np.array_equal(gt_array, np.array([4,5])), "Damn"
 
     # test that if land is in range, gt val is not generated
     test_original_chlor = np.ones((5,3,3))
@@ -516,8 +520,8 @@ def test_stuff():
 
     print("Tests for gen_data passed")
     
-# test_stuff()
+test_stuff()
 
 # example call to preprocess
-preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "ice"],
-    50, 244, 3, 1, "data.npy", "gt.npy", visualize=True)
+preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll"],
+    50, 244, 3, 1, "data_new.npy", "gt_new.npy", visualize=False)

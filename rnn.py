@@ -17,7 +17,7 @@ class Model(tf.keras.Model):
         self.hidden_size = 256
         self.time_step = time_step
         self.batch_size = 256
-        self.learning_rate = 0.01
+        self.learning_rate = 0.001
         self.epochs = 10
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
@@ -81,7 +81,6 @@ def train(model, train_inputs, train_labels):
 
     for i in range(0, len(train_inputs), model.batch_size):
         batch_x = train_inputs[i:i+model.batch_size]
-        batch_x = tf.reshape(batch_x, (batch_x.shape[0],batch_x.shape[1]*batch_x.shape[2]))
         batch_y = train_labels[i:i+model.batch_size]
         with tf.GradientTape() as tape:
             pred = model.call(batch_x, None)
@@ -131,8 +130,8 @@ def split_data(inputs, labels):
     return train_inputs, train_labels, test_inputs, test_labels
 
 def main():
-    train_data = np.load("data.npy")
-    ground_truth = np.load("gt.npy")
+    train_data = np.load("data_new.npy")
+    ground_truth = np.load("gt_new.npy")
 
     model = Model(train_data.shape[1])
 
@@ -141,7 +140,7 @@ def main():
         train_inputs, train_labels, test_inputs, test_labels = split_data(train_data, ground_truth)
         train_loss = train(model, train_inputs, train_labels)
         test_acc, test_loss = test(model, test_inputs, test_labels)
-        print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}, avg_err: {}".format(i + 1, train_loss, test_loss, test_acc, average(test_inputs, test_labels)))
+        print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}, avg_err: {}".format(i + 1, tf.math.round(train_loss), tf.math.round(test_loss), tf.math.round(test_acc), tf.math.round(average(test_inputs, test_labels))))
 
 
 
