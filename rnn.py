@@ -56,6 +56,10 @@ class Model(tf.keras.Model):
         """
         mse = MeanSquaredError()
         return mse(labels, pred)
+    
+    def accuracy(self, labels, predicted):
+        abs_error = np.absolute((labels - predicted)/predicted)
+        return 100 * np.mean(abs_error)
 
 def reshape_inputs_and_labels(inputs, labels, window_size):
     """
@@ -91,9 +95,6 @@ def train(model, train_inputs, train_labels):
     
     return total_loss/step
 
-def accuracy(labels, predicted):
-    abs_error = np.absolute((labels - predicted)/predicted)
-    return np.mean(abs_error)
 
 
 def test(model, test_inputs, test_labels):
