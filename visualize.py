@@ -6,6 +6,7 @@ import numpy as np
 import sys
 from common import merge_position
 
+
 def visualize_data(df, date, show_null=False):
     """
     Visualizes chlorophyll for a given day on a map. 

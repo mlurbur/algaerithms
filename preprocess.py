@@ -5,7 +5,9 @@ import pandas as pd
 from plotly.graph_objects import Figure, Scattergeo
 import time
 import datetime
-from common import merge_position
+from tqdm import tqdm
+
+from common import merge_position, visualize_day_from_array, visualize_two_as_gif
 
 # TODO: 
 # - Make gen_data look forward in time (right now just looks back)
@@ -167,7 +169,7 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
     data need to be complete for this (365 measurements/year) to be true? - data just needs to start on Jan 1, which it does in our case
 
     Returns:
-    data_array_list: list of arrays of shape (num_time_steps, 1, num_unique_lat, num_unique_lon)
+    data_array_list: list of arrays of shape (num_time_steps, num_unique_lat, num_unique_lon)
     """
 
     PAD_VAL = -np.inf
@@ -213,21 +215,18 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
     x_vals = array_data[:,x_index]
     y_vals = array_data[:,y_index]
 
-    # only include dates within specified range
-    # t_vals = t_vals_orig[(t_vals_orig >= min_d-1) & (t_vals_orig <= max_d-1)]
-
-    num_indices = len(x_vals)
-    col_holder = np.zeros((num_indices))
-    index_array = np.array([t_vals, col_holder,x_vals,y_vals]).T
+    index_array = np.array([t_vals,x_vals,y_vals]).T
 
     data_array_list = []
     for j in range(num_cols):
-        big_boy = np.full((total_days, 1, x_max+1, y_max+1), PAD_VAL).astype('float')
+        big_boy = np.full((total_days, x_max+1, y_max+1), PAD_VAL).astype('float')
         col_data = array_data[:,column_indices[j]]
 
         index_array = index_array.astype(int)
 
-        big_boy[index_array[:,0], 0, index_array[:,2], index_array[:,3]] = col_data
+        big_boy[index_array[:,0], index_array[:,1], index_array[:,2]] = col_data
+
+        # trim to only include for given day
         time_trimmed = big_boy[min_d-1:max_d+1] 
         data_array_list.append(time_trimmed)
         
@@ -244,13 +243,13 @@ def fill_missing(big_data_chlor):
     **Must have at least 12 time periods of data to do anything useful**
 
     Args:
-    big_data_chlor: chlorophyll data from convert_map_to_array of shape (t,0,x,y)
+    big_data_chlor: chlorophyll data from convert_map_to_array of shape (t,x,y)
 
     Returns:
     filled_data: big_data_chlor with all possible nan values filled
     """
 
-    filled_data = big_data_chlor
+    filled_data = np.copy(big_data_chlor)
 
     # Define summarization regime, first pass will use window of 1, no neighbors
     # this fills ~90% of missing values in my experience
@@ -263,9 +262,9 @@ def fill_missing(big_data_chlor):
         # fill data with new means
         if len(nan_points) > 0: # handles first loop
             nan_z = nan_points[:,0]
-            nan_x = nan_points[:,2]
-            nan_y = nan_points[:,3]
-            filled_data[nan_z, 0, nan_x, nan_y] = np.asarray(means)
+            nan_x = nan_points[:,1]
+            nan_y = nan_points[:,2]
+            filled_data[nan_z, nan_x, nan_y] = np.asarray(means)
         # generate new nan_indices
         nan_points = np.argwhere(np.isnan(filled_data))
         # clear means
@@ -275,11 +274,11 @@ def fill_missing(big_data_chlor):
             break
 
         for point in nan_points:
-            x = point[2]
-            y = point[3]
+            x = point[1]
+            y = point[2]
             z = point[0]
             if z > t:
-                slice = big_data_chlor[max(0,z-t):z+t+1,0, max(0,x-n):x+n+1,max(0,y-n):y+n+1]
+                slice = big_data_chlor[max(0,z-t):z+t+1, max(0,x-n):x+n+1,max(0,y-n):y+n+1]
                 # take mean, ignore nan and -inf
                 mean = np.ma.masked_invalid(slice).mean()
                 # is mean is masked (no data in window and neighbors) still nan
@@ -317,16 +316,17 @@ def gen_data(original_chlor_data, data_array_list, t, n):
 
     # find location of ground truth values, assume that non data regions are filled with -np.inf
     gt_indices = np.argwhere(np.isfinite(original_chlor_data))
-    _, _, max_x, max_y = original_chlor_data.shape
+    _, max_x, max_y = original_chlor_data.shape
     data_array = []
     gt_values = []
     # get data slice from filled_data for each ground truth
-    for point in gt_indices:
-            x = point[2]
-            y = point[3]
+    for point in tqdm(gt_indices):
+            x = point[1]
+            y = point[2]
             z = point[0]
             if z >= t-1:
                 data_bit = []
+                # loop through all data types for a given time period
                 for i in range(len(data_array_list)):
                     x_min = x-n
                     x_max = x+n
@@ -337,7 +337,7 @@ def gen_data(original_chlor_data, data_array_list, t, n):
                         break
                     if (x_max > max_x-1) or (y_max > max_y-1):
                         break
-                    slice = data_array_list[i][z-(t-1):z+1,0, x_min:x_max+1,y_min:y_max+1]
+                    slice = data_array_list[i][z-(t-1):z+1, x_min:x_max+1,y_min:y_max+1]
                     # skip if contains nan or inf
                     if (np.isnan(slice).any() or np.isinf(slice).any()):
                         break
@@ -358,7 +358,7 @@ def gen_data(original_chlor_data, data_array_list, t, n):
     return np.asarray(data_array), np.asarray(gt_values)
 
 
-def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_data_file, save_gt_file):
+def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_data_file, save_gt_file, visualize=False):
     """
     Performs data preprocessing. Saves final data in save_file.
 
@@ -372,6 +372,7 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
     num_neighbors: num neighbors (kinda) to include in data
     save_data_file: file path to save data
     save_gt_file: file path to save ground truth values
+    visualize: visualize stuff
     """
 
     if params_of_interest[0] != "chlorophyll":
@@ -387,13 +388,15 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
 
     print('Converting data to array form representing spatial layout...')
     data_array = convert_map_to_array(df, lat_dict, lon_dict, params_of_interest, min_d=min_day, max_d=max_day)
-
     print("Filling in missing chlorophyll values...")
     filled_data = fill_missing(data_array[0])
 
+    if visualize:
+        visualize_two_as_gif(data_array[0], filled_data, "animations/compare.gif")
+
     print("Generating data set from valid ground truth values...")
     # replace original data with filled data in data_array
-    data_array_with_filled = data_array
+    data_array_with_filled = np.copy(data_array)
     data_array_with_filled[0] = filled_data
     data_array, gt_array= gen_data(data_array[0], data_array_with_filled, time_window, num_neighbors)
 
@@ -457,14 +460,14 @@ def test_stuff():
     missing_map = convert_map_to_array(df_2, lon_dict, lon_dict, ["chlorophyll", "ice"])
 
     # check that chlorophyll and ice values are as expected for full map
-    expected = np.array([np.full((1,5,5), 0), np.full((1,5,5), 1)])
+    expected = np.array([np.full((5,5), 0), np.full((5,5), 1)])
     assert np.array_equal(full_map[0], expected), "Damn"
-    expected = np.array([np.full((1,5,5), 10), np.full((1,5,5), 20)])
+    expected = np.array([np.full((5,5), 10), np.full((5,5), 20)])
     assert np.array_equal(full_map[1], expected), "Damn"
 
     # check that chlor and ice values are as expected for missing and border map
     chlor = np.array([[[[1,1,np.nan, np.nan], [1,1,np.nan, np.nan], [1,1,-np.inf, -np.inf], [1,1,-np.inf, -np.inf]]]])
-    ice = np.array([[[[0,0,0,0], [0,0,0,0], [0,0,-np.inf,-np.inf],[0,0,-np.inf,-np.inf]]]])
+    ice = np.array([[[0,0,0,0], [0,0,0,0], [0,0,-np.inf,-np.inf],[0,0,-np.inf,-np.inf]]])
 
     assert np.allclose(missing_map[0], chlor, equal_nan=True), "Damn"
     assert np.array_equal(missing_map[1], ice), "Damn"
@@ -472,30 +475,30 @@ def test_stuff():
     print("Tests for convert_map_to_array passed")
 
     # testing fill_missing
-    fake_missing = np.ones((20,1,3,3))
-    ice = np.zeros((20,1,3,3))
+    fake_missing = np.ones((20,3,3))
+    ice = np.zeros((20,3,3))
     # create missing values
-    fake_missing[10,0,0,:] = np.nan
+    fake_missing[10,0,:] = np.nan
     # create "land"
-    fake_missing[:,0,2,:] = -np.inf
+    fake_missing[:,2,:] = -np.inf
     filled = fill_missing(fake_missing)
 
-    assert np.array_equal(fake_missing[10,0,0,:], [1,1,1]), "Damn"
-    assert np.array_equal(fake_missing[:,0,2,:], fake_missing[:,0,2,:]), "Damn"
+    assert np.array_equal(fake_missing[10,0,:], [1,1,1]), "Damn"
+    assert np.array_equal(fake_missing[:,2,:], fake_missing[:,2,:]), "Damn"
     
     print("Tests for fill_missing passed")
 
     # testing gen_data
-    test_original_chlor = np.ones((5,1,3,3))
-    test_original_chlor[0,0,1,1] = 1
-    test_original_chlor[1,0,1,1] = 3
-    test_original_chlor[2,0,1,1] = np.nan
-    test_original_chlor[3,0,1,1] = 4
-    test_original_chlor[4,0,1,1] = np.nan
+    test_original_chlor = np.ones((5,3,3))
+    test_original_chlor[0,1,1] = 1
+    test_original_chlor[1,1,1] = 3
+    test_original_chlor[2,1,1] = np.nan
+    test_original_chlor[3,1,1] = 4
+    test_original_chlor[4,1,1] = np.nan
     original_copy = np.copy(test_original_chlor)
     test_filled_chlor = fill_missing(test_original_chlor)
 
-    data_array, gt_array= gen_data(np.ones((20,1,3,3)), [np.ones((20,1,3,3)), ice], 3, 1)
+    data_array, gt_array= gen_data(np.ones((20,3,3)), [np.ones((20,3,3)), ice], 3, 1)
 
     assert data_array.shape == (18, 2, 26), "Damn"
     assert gt_array.shape == (18,), "Damn"
@@ -504,8 +507,8 @@ def test_stuff():
     assert np.array_equal(gt_array, np.array([3,4])), "Damn"
 
     # test that if land is in range, gt val is not generated
-    test_original_chlor = np.ones((5,1,3,3))
-    test_original_chlor[:,0,0,0] = -np.inf
+    test_original_chlor = np.ones((5,3,3))
+    test_original_chlor[:,0,0] = -np.inf
     original_copy = np.copy(test_original_chlor)
     test_filled_chlor = fill_missing(test_original_chlor)
     data_array, gt_array = gen_data(original_copy, [test_filled_chlor], 2, 1)
@@ -513,8 +516,8 @@ def test_stuff():
 
     print("Tests for gen_data passed")
     
-test_stuff()
+# test_stuff()
 
 # example call to preprocess
 preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "ice"],
-    50, 244, 3, 1, "data.npy", "gt.npy")
+    50, 244, 3, 1, "data.npy", "gt.npy", visualize=True)
