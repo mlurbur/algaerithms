@@ -92,8 +92,8 @@ def train(model, train_inputs, train_labels):
     return total_loss/step
 
 def accuracy(labels, predicted):
-    difference = labels - predicted
-    return difference
+    abs_error = np.absolute((labels - predicted)/predicted)
+    return np.mean(abs_error)
 
 
 def test(model, test_inputs, test_labels):
