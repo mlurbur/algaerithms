@@ -544,3 +544,16 @@ test_stuff()
 # example call to preprocess
 preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "sst","depth"],
     50, 244, 3, 1, "data.npy", "gt.npy", visualize=False)
+
+# preprocess constant parameters
+num_years = 18
+min_d, max_d = 50, 244
+time_window = 3
+num_neighbors = 1
+data_types = ["chlorophyll"]
+
+# generate files for all years, for 1–3 timesteps back
+for t in range(1, time_window + 1):
+    for y in range(num_years):
+        FILE_NAME_PREFIX = "preprocessed-data/200" + str(y+3) + "_" + str(min_d) + "_" + str(max_d) + "_" + str(t) + "_" + str(num_neighbors) + "_" + data_types.join("_")
+        preprocess("data/merged_sst_ice_chl_par_200" + str(y+3) + ".RDS", "data/Bering_full_grid_lookup_no_goa.RDS", data_types, min_d, max_d, time_window, num_neighbors, FILE_NAME_PREFIX + "_inputs.npy", FILE_NAME_PREFIX + "_labels.npy", visualize=False)
