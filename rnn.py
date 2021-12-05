@@ -14,7 +14,7 @@ class Model(tf.keras.Model):
 
         super(Model, self).__init__()
 
-        self.hidden_size = 256
+        self.hidden_size = 500
         self.time_step = time_step
         self.batch_size = 256
         self.learning_rate = 0.001
@@ -23,10 +23,10 @@ class Model(tf.keras.Model):
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
         self.lstm_layer1 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=False)
-        self.lstm_layer2 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=False)
-        self.lstm_layer3 = tf.keras.layers.LSTM(1028, return_sequences=False, return_state=False)
+        # self.lstm_layer2 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=False)
+        # self.lstm_layer3 = tf.keras.layers.LSTM(1028, return_sequences=False, return_state=False)
         self.dense1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.dense2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        # self.dense2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
         self.dense3 = tf.keras.layers.Dense(1)
         
 
@@ -41,13 +41,15 @@ class Model(tf.keras.Model):
         """
 
         lstm_output1 = self.lstm_layer1(inputs)
-        lstm_output2 = self.lstm_layer2(lstm_output1)
-        lstm_output3 = self.lstm_layer3(lstm_output2)
-        hidden1 = self.dense1(lstm_output3)
-        hidden2 = self.dense2(hidden1)
-        predictions = self.dense3(hidden2)
+        # lstm_output2 = self.lstm_layer2(lstm_output1)
+        # lstm_output3 = self.lstm_layer3(lstm_output2)
+        hidden1 = self.dense1(lstm_output1)
+        # hidden2 = self.dense2(hidden1)
+        predictions = self.dense3(hidden1)
 
-        return predictions
+        # get the final predicted values (i think)
+        pred = predictions[:,-1,0]
+        return pred
 
     def loss(self, pred, labels):
         """
@@ -97,14 +99,14 @@ def test(model, test_inputs, test_labels):
 
     curr_loss = 0
     step = 0
-    all_pred = np.zeros(test_labels.shape)
+    all_pred = np.zeros(test_labels.shape[0])
 
     for i in range(0, len(test_inputs), model.batch_size):
         batch_x = test_inputs[i:i+model.batch_size]
         batch_y = test_labels[i:i+model.batch_size]
         pred = model.call(batch_x, None)
         loss = model.loss(pred, batch_y)
-        all_pred[i:i+model.batch_size] = pred[:,0]
+        all_pred[i:i+model.batch_size] = pred
         step+=1
         curr_loss+=loss
 

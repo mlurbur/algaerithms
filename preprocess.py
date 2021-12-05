@@ -359,7 +359,7 @@ def gen_data(original_chlor_data, data_array_list, t, n):
                 if data_count == len(data_array_list):
                     data_array.append(fat_slice)
                     gt_values.append(gt_val)
-    return np.asarray(data_array), np.asarray(gt_values)
+    return np.array(data_array), np.array(gt_values)
 
 
 def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_data_file, save_gt_file, visualize=False):
@@ -518,10 +518,29 @@ def test_stuff():
     data_array, gt_array = gen_data(original_copy, [test_filled_chlor], 2, 1)
     assert np.array_equal(gt_array, np.array([])), "Damn"
 
+    test_original_chlor = np.ones((4,3,3))
+    test_original_chlor[1,:,:] = 2
+    test_original_chlor[1,1,1] = -2
+    test_original_chlor[2,:,:] = 3
+    test_original_chlor[2,1,1] = -3
+    test_original_chlor[3,:,:] = 4
+    test_original_chlor[3,1,1] = -4
+
+    data_array, gt_array = gen_data(test_original_chlor, [test_original_chlor,ice], 2, 1)
+    expected_data_array = np.array([
+        [[ 1,1,1,  1.,  1.,  1.,  1.,  1.,  1.,0,0,0,0,0,0,0,0,0],
+        [ 2.,  2.,  2.,  2., -2.,  2.,  2.,  2.,  2.,0,0,0,0,0,0,0,0,0]],
+       [[ 2.,  2.,  2.,  2., -2.,  2.,  2.,  2.,  2.,0,0,0,0,0,0,0,0,0],
+        [ 3.,  3.,  3.,  3., -3.,  3.,  3.,  3.,  3.,0,0,0,0,0,0,0,0,0]]
+        ])
+
+    assert np.array_equal(data_array, expected_data_array), "fock"
+    assert np.array_equal(gt_array, np.array([-3,-4])), "fock"
+
     print("Tests for gen_data passed")
     
 test_stuff()
 
 # example call to preprocess
 preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll"],
-    50, 244, 3, 1, "data_new.npy", "gt_new.npy", visualize=False)
+    50, 244, 3, 1, "data.npy", "gt.npy", visualize=False)
