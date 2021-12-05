@@ -542,5 +542,5 @@ def test_stuff():
 test_stuff()
 
 # example call to preprocess
-preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll"],
+preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "sst","depth"],
     50, 244, 3, 1, "data.npy", "gt.npy", visualize=False)
