@@ -1,4 +1,3 @@
-from operator import gt
 import numpy as np
 import pyreadr
 import pandas as pd
@@ -7,7 +6,7 @@ import time
 import datetime
 from tqdm import tqdm
 
-from common import merge_position, visualize_day_from_array, visualize_two_as_gif
+from common import merge_position, visualize_two_as_gif
 
 # TODO: 
 # - get a metric of % error based on averaging so we have a baseline comparison for model performance
@@ -16,24 +15,23 @@ from common import merge_position, visualize_day_from_array, visualize_two_as_gi
 #   As of now, this gets removed because the data array would have impossible shape
 # - handle gt values at edge of "map". As of now, if window doesn't fit, the gt is skipped
 
-
 def create_mapping_dict(mapping_file):
     """
-    Creates dict that maps lat,long to x,y coords in an array. This is specific to
+    Creates dict mapping lat,lon to x,y coords in an array. This is specific to
     the format of our data, so use caution.
 
     Args:
-    mapping_file: path to file that contains mapping of gridid to lat, lon
+        mapping_file: path to file that contains mapping of gridid to lat,lon
 
     Returns:
-    lat_dict: dict of form {lat: x} for every point in mapping_file
-    lon_dict: dict of form {lon: y} for every point in mapping_file
+        lat_dict: dict of form {lat: x} for every point in mapping_file
+        lon_dict: dict of form {lon: y} for every point in mapping_file
     """
 
     # load mapping file
     mapping = pyreadr.read_r(mapping_file)[None].to_numpy()
 
-    # get mapping's latitudinal and longitudinal values
+    # get mapping's lat and lon values
     lat_vals, lon_vals = mapping[:,1], mapping[:,2]
 
     # build array of all points ((lat_val, lon_val) pairs)
@@ -63,33 +61,6 @@ def create_mapping_dict(mapping_file):
     sorted_points_lon = sorted(points_in_seventh_row, key=lambda x: x[1])
     for i in range(len(points_in_seventh_row) - 1):
         lon_lines.append((sorted_points_lon[i+1][1] + sorted_points_lon[i][1]) / 2)
-
-    # potential todo: this can be improved (remedying duplicates) by making a
-    # grid_coord ((0,1)) -> point_coord (((lat_val, lon_val), dist)) dict and
-    # using a k-means-esque method to get the point_coord with the lowest dist
-    # to each midpoint value (will also need a dict mapping grid_coord to
-    # midpoint_coord for calculating distances). you iterate over all of the
-    # first dictionary's keys (grid_coords) until a while condition checking
-    # if there are still point_coords left to assign breaks. though with this
-    # method, every point in the map would need to be gridded (otherwise the
-    # loop would run infinitely)
-
-    # ...
-    # x = np.searchsorted(invert_lat, lat_midpoint_vals * -1)
-    # y = np.searchsorted(lon_lines, lon_midpoint_vals * -1)
-    #
-    # 
-    # while points:
-    #     for grid_coord in zip(x,y):
-    #         point_with_least_dist, dist = find_point_with_least_dist(grid_to_midpoint[grid_coord], points)
-    #         if not grid_to_point[grid_coord]:
-    #             grid_to_point[grid_coord] = (point_with_least_dist, dist)
-    #             points.remove(point_with_least_dist)
-    #             continue
-    #         if grid_to_point[grid_coord][1] > dist:
-    #             if grid_to_point[grid_coord] is not point_with_least_dist:
-    #                 points.append(grid_to_point[grid_coord][0])
-    #             grid_to_point[grid_coord] = (point_with_least_dist, dist)
 
     invert_lat = np.sort(np.array(lat_lines) * -1)
     x = np.searchsorted(invert_lat, lat_vals * -1)
@@ -166,9 +137,6 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
     column_names: column names of data for which to generate data_arrays 
     min_d: minimum julian day to include
     max_d: maximum julian day to include
-
-    QUESTION: Are these still the min_d'th and max_d'th julian days? Does the
-    data need to be complete for this (365 measurements/year) to be true? - data just needs to start on Jan 1, which it does in our case
 
     Returns:
     data_array_list: list of arrays of shape (num_time_steps, num_unique_lat, num_unique_lon)
@@ -539,12 +507,6 @@ def test_stuff():
 
     print("Tests for gen_data passed")
     
-test_stuff()
-
-# example call to preprocess
-preprocess("data/merged_sst_ice_chl_par_2003.RDS", "data/Bering_full_grid_lookup_no_goa.RDS", ["chlorophyll", "sst","depth"],
-    50, 244, 3, 1, "data.npy", "gt.npy", visualize=False)
-
 # preprocess constant parameters
 num_years = 18
 min_d, max_d = 50, 244
@@ -553,7 +515,7 @@ num_neighbors = 1
 data_types = ["chlorophyll"]
 
 # generate files for all years, for 1–3 timesteps back
-for t in range(1, time_window + 1):
-    for y in range(num_years):
-        FILE_NAME_PREFIX = "preprocessed-data/200" + str(y+3) + "_" + str(min_d) + "_" + str(max_d) + "_" + str(t) + "_" + str(num_neighbors) + "_" + data_types.join("_")
-        preprocess("data/merged_sst_ice_chl_par_200" + str(y+3) + ".RDS", "data/Bering_full_grid_lookup_no_goa.RDS", data_types, min_d, max_d, time_window, num_neighbors, FILE_NAME_PREFIX + "_inputs.npy", FILE_NAME_PREFIX + "_labels.npy", visualize=False)
+for y in range(7, num_years):
+    for t in range(1, time_window + 1):
+        FILE_NAME_PREFIX = "preprocessed-data/" + str(2003+y) + "_" + str(min_d) + "_" + str(max_d) + "_" + str(t) + "_" + str(num_neighbors) + "_" + "_".join(data_types)
+        preprocess("data/merged_sst_ice_chl_par_" + str(2003+y) + ".RDS", "data/Bering_full_grid_lookup_no_goa.RDS", data_types, min_d, max_d, time_window, num_neighbors, FILE_NAME_PREFIX + "_inputs.npy", FILE_NAME_PREFIX + "_labels.npy", visualize=False)
