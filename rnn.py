@@ -3,13 +3,11 @@ import numpy as np
 from tensorflow.keras import Model
 from tensorflow.keras.losses import MeanSquaredError
 
-import timeit
-
 
 class Model(tf.keras.Model):
     def __init__(self, time_step):
         """
-        Initilize all the hyper parameters for the LSTM model
+        Initialize all the hyper parameters for the LSTM model
         """
 
         super(Model, self).__init__()
@@ -141,9 +139,9 @@ def split_data(inputs, labels):
 
     return train_inputs, train_labels, test_inputs, test_labels
 
-def main():
-    train_data = np.load("data.npy")
-    ground_truth = np.load("gt.npy")
+def run_model(inputs_path, labels_path):
+    train_data = np.load(inputs_path)
+    ground_truth = np.load(labels_path)
 
     model = Model(train_data.shape[1])
 
@@ -154,24 +152,4 @@ def main():
         test_acc, test_loss = test(model, test_inputs, test_labels)
         print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}".format(i + 1, tf.math.round(train_loss), tf.math.round(test_loss), tf.math.round(test_acc)))
 
-
-def test_acc():
-    model = Model(1)
-
-    pred = np.array([1,1,1])
-    label = np.array([1,1,1])
-    assert model.accuracy(label, pred) == 0.0, "failed"
-
-    pred = np.array([0,0,0])
-    label = np.array([1,1,1])
-    assert model.accuracy(label, pred) == 100.0, "failed"
-
-    pred = np.array([-1,-1,-1])
-    label = np.array([1,1,1])
-    assert model.accuracy(label, pred) == 200.0, "failed"
-
-    print("all tests passed")
-
-if __name__ == '__main__':
-    # test_acc()
-    main()
+    return model
