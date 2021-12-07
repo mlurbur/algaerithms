@@ -538,3 +538,7 @@ def merge_position(rds_file, mapping_file):
     df["meanlon"] = df["gridid"].map(grid_lon_dict)
 
     return df
+
+def generate_output_paths(yr, sd, ed, tw, nn, dt):
+    OUTPUT_FILE_PREFIX = f"preprocessed-data/yr{2003+yr}_sd{sd}_ed{ed}_tw{tw}_nn{nn}_dt{'_'.join(dt)}"
+    return OUTPUT_FILE_PREFIX + "_inputs.npy", OUTPUT_FILE_PREFIX + "_labels.npy"
