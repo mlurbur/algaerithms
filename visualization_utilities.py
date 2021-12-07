@@ -9,9 +9,21 @@ from tqdm import tqdm
 from preprocess_utilities import create_mapping_dict, merge_position, merge_position, convert_map_to_array, fill_missing
 
 
-def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n):
+def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n, save_path):
     """
-    who knows
+    Fills all possible missing values in data_file using model.
+
+    NOTE: t and n should be the same as used for training the model!
+
+    Args:
+    model: trained model object
+    data_file: path to RDS file
+    mapping_file: path to file with mapping info
+    min_day: minimum day to fill with model
+    max_day: max day to fill with model
+    t: time
+    n: num neighbors
+    save_path: path to save gif visualization.
     """
     lat_dict, lon_dict = create_mapping_dict(mapping_file)
 
@@ -31,7 +43,7 @@ def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n):
     for point, val in zip(valid_indices, predicted_values):
         data_with_predicted[point[0], point[1], point[2]] = val
     
-    visualize_two_as_gif(data_array[0],data_with_predicted, 'wooweewah.gif')
+    visualize_two_as_gif(data_array[0],data_with_predicted, save_path)
     print("Filled", 100*percent_filled, "percent of missing values.")
 
 
