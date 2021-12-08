@@ -17,6 +17,8 @@ params_of_interest = ['chlorophyll']
 inputs_path = 'preprocessed-data/2003_50_244_1_1_chlorophyll_inputs.npy'
 labels_path = 'preprocessed-data/2003_50_244_1_1_chlorophyll_labels.npy'
 visualization_path = 'imgs/filled_with_model.gif'
+n = 1
+t = 2
 
 
 
@@ -28,10 +30,10 @@ visualization_path = 'imgs/filled_with_model.gif'
 
 if __name__ == "__main__":
     if preprocess_bool:
-        preprocess(raw_data_file, mapping_file, params_of_interest, 50, 140, 3, 1, 
+        preprocess(raw_data_file, mapping_file, params_of_interest, 50, 140, t, n, 
             'preprocessed-data/test_inputs.npy', 'preprocessed-data/test_lables.npy')
     if train:
-        trained_model = run_model(inputs_path, labels_path)
-        fill_with_model(trained_model, raw_data_file, mapping_file, 50, 244, 1, 1, visualization_path)
+        trained_model = run_model(inputs_path, labels_path, n)
+        fill_with_model(trained_model, raw_data_file, mapping_file, 50, 140, t, n, visualization_path)
 
 

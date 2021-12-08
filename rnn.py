@@ -120,9 +120,9 @@ def test(model, test_inputs, test_labels):
 
     return model.accuracy(test_labels, pred), loss
 
-def average(inputs, labels):
-    chlor = inputs[:,:,:9]
-    avg = np.mean(chlor, axis=1)
+def average(inputs, labels, n):
+    chlor = inputs[0,0,:(n*2 + 1)**2]
+    avg = np.mean(chlor)
     acc = 100 * np.mean(np.absolute((avg - labels)/labels))
     return acc
 
@@ -139,7 +139,7 @@ def split_data(inputs, labels):
 
     return train_inputs, train_labels, test_inputs, test_labels
 
-def run_model(inputs_path, labels_path):
+def run_model(inputs_path, labels_path, n):
     train_data = np.load(inputs_path)
     ground_truth = np.load(labels_path)
 
@@ -150,6 +150,7 @@ def run_model(inputs_path, labels_path):
         train_inputs, train_labels, test_inputs, test_labels = split_data(train_data, ground_truth)
         train_loss = train(model, train_inputs, train_labels)
         test_acc, test_loss = test(model, test_inputs, test_labels)
-        print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}".format(i + 1, tf.math.round(train_loss), tf.math.round(test_loss), tf.math.round(test_acc)))
+        print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}, baseline_err: {}".format(i + 1, 
+            tf.math.round(train_loss), tf.math.round(test_loss), tf.math.round(test_acc), tf.math.round(average(test_inputs, test_labels, n))))
 
     return model
