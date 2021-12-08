@@ -131,6 +131,7 @@ def average(inputs, labels, n):
     chlor = inputs[0,0,:(n*2 + 1)**2]
     avg = np.mean(chlor)
     acc = 100 * np.mean(np.absolute((avg - labels)/labels))
+
     return acc
 
 
@@ -176,7 +177,6 @@ def run_model(inputs_path_list, labels_path_list, n):
     inputs_list = []
     labels_list = []
     for i, j in zip(inputs_path_list, labels_path_list):
-
         inputs_list.append(np.load(i))
         labels_list.append(np.load(j))
 
