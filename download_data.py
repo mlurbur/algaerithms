@@ -1,5 +1,5 @@
 import gdown
 
-url = 'https://drive.google.com/drive/folders/12zOqHG6C2o9qEFscZvW1b-xRjhXiy34K?usp=sharing'
+url = 'DATA_URL_HERE'
 
 gdown.download_folder(url, quiet=False)
