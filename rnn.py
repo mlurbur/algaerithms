@@ -65,6 +65,9 @@ class Model(tf.keras.Model):
         return 100 * tf.math.reduce_mean(abs_error)
     
     def accuracy(self, labels, predicted):
+        """
+        Calculates MAPE
+        """
         abs_error = np.absolute((predicted - labels)/labels)
         return 100 * np.mean(abs_error)
 
@@ -107,18 +110,16 @@ def test(model, test_inputs, test_labels):
     step = 0
     all_pred = np.zeros(test_labels.shape[0])
 
-    # for i in range(0, len(test_inputs), model.batch_size):
-    #     batch_x = test_inputs[i:i+model.batch_size]
-    #     batch_y = test_labels[i:i+model.batch_size]
-    #     pred = model.call(batch_x, None)
-    #     loss = model.loss(pred, batch_y)
-    #     all_pred[i:i+model.batch_size] = pred
-    #     step+=1
-    #     curr_loss+=loss
-    pred = model.call(test_inputs, None)
-    loss = model.loss_mape(pred, test_labels)
+    for i in range(0, len(test_inputs), model.batch_size):
+        batch_x = test_inputs[i:i+model.batch_size]
+        batch_y = test_labels[i:i+model.batch_size]
+        pred = model.call(batch_x, None)
+        loss = model.loss(pred, batch_y)
+        all_pred[i:i+model.batch_size] = pred
+        step+=1
+        curr_loss+=loss
 
-    return model.accuracy(test_labels, pred), loss
+    return model.accuracy(test_labels, all_pred), curr_loss/step
 
 def average(inputs, labels, n):
     chlor = inputs[0,0,:(n*2 + 1)**2]
@@ -139,9 +140,13 @@ def split_data(inputs, labels):
 
     return train_inputs, train_labels, test_inputs, test_labels
 
-def run_model(inputs_path, labels_path, n):
-    train_data = np.load(inputs_path)
-    ground_truth = np.load(labels_path)
+def run_model(inputs_path_list, labels_path_list, n):
+    train_data = np.array([])
+    ground_truth = np.array([])
+    for i, j in zip(inputs_path_list, labels_path_list):
+
+        train_data = np.append(train_data,np.load(i))
+        ground_truth = np.append(ground_truth,np.load(j))
 
     model = Model(train_data.shape[1])
 
