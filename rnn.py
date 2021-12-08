@@ -128,7 +128,7 @@ def test(model, test_inputs, test_labels):
     return model.accuracy(test_labels, all_pred), curr_loss/step
 
 def average(inputs, labels, n):
-    chlor = inputs[0,0,:(n*2 + 1)**2]
+    chlor = inputs[0,0,np.math.floor(n/2)]
     avg = np.mean(chlor)
     acc = 100 * np.mean(np.absolute((avg - labels)/labels))
 
