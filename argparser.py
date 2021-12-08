@@ -44,6 +44,12 @@ def validate_data_types (data_types):
             raise argparse.ArgumentTypeError(f"{data_type} is not a valid data type")
     return data_types
 
+def validate_model(model):
+    VALID_MODELS = ["FFN", "RNN"]
+    if model not in VALID_MODELS:
+        raise argparse.ArgumentTypeError(f"{model} is not a valid model")
+    return model
+
 # argparse argument relation validators
 def validate_day_range(start_day, end_day):
     if start_day > end_day:
@@ -51,6 +57,7 @@ def validate_day_range(start_day, end_day):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("model", type=validate_model, help="the model to run, either FFN (feed-forward) or RNN (LSTM)")
     
     parser.add_argument("year", type=validate_year, help="the year whose data the model should take in")
     parser.add_argument("start_day", type=validate_start_day, help="julian day on which the data should begin")

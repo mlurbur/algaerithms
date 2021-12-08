@@ -538,3 +538,14 @@ def merge_position(rds_file, mapping_file):
 def generate_output_paths(yr, sd, ed, tw, nn, dt):
     OUTPUT_FILE_PREFIX = f"preprocessed-data/yr{yr}_sd{sd}_ed{ed}_tw{tw}_nn{nn}_{'_'.join(dt)}"
     return OUTPUT_FILE_PREFIX + "_inputs.npy", OUTPUT_FILE_PREFIX + "_labels.npy"
+
+def split_data(inputs, labels):
+    shuffler = np.random.permutation(len(labels))
+    labels_shuffled = labels[shuffler]
+    inputs_shuffled = inputs[shuffler]
+    split = (len(labels_shuffled) * 8)//10
+    train_inputs = inputs_shuffled[:split]
+    test_inputs = inputs_shuffled[split + 1:]
+    train_labels = labels_shuffled[:split]
+    test_labels = labels_shuffled[split + 1:]
+    return train_inputs, train_labels, test_inputs, test_labels
