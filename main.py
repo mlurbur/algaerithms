@@ -7,8 +7,8 @@ from visualization_utilities import fill_with_model
 from preprocess_utilities import preprocess, generate_output_paths
 from argparser import parse_args
 
-preprocess_bool = True
-train_model = False
+preprocess_bool = False
+train_model = True
 
 mapping_file = 'data/Bering_full_grid_lookup_no_goa.RDS'
 

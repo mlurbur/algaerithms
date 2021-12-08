@@ -540,5 +540,5 @@ def merge_position(rds_file, mapping_file):
     return df
 
 def generate_output_paths(yr, sd, ed, tw, nn, dt):
-    OUTPUT_FILE_PREFIX = f"preprocessed-data/yr{2003+yr}_sd{sd}_ed{ed}_tw{tw}_nn{nn}_dt{'_'.join(dt)}"
+    OUTPUT_FILE_PREFIX = f"preprocessed-data/yr{yr}_sd{sd}_ed{ed}_tw{tw}_nn{nn}_{'_'.join(dt)}"
     return OUTPUT_FILE_PREFIX + "_inputs.npy", OUTPUT_FILE_PREFIX + "_labels.npy"
