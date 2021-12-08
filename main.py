@@ -28,7 +28,7 @@ def parseArguments():
 
 def main(args):
     if args.preprocess_bool:
-            preprocess(args.raw_data_file, args.mapping_file, params_of_interest, 50, 140, t, n, 
+            preprocess(args.raw_data_file, args.mapping_file, params_of_interest, 50, 140, args.t, args.n, 
             'preprocessed-data/test_inputs.npy', 'preprocessed-data/test_lables.npy')
     if args.train:
         trained_model = run_model(args.inputs_path, args.labels_path, args.n)
