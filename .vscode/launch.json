@@ -9,7 +9,7 @@
       "type": "python",
       "request": "launch",
       "program": "main.py",
-      "args": ["RNN", "2003", "50", "244", "2", "1", "chlorophyll", "-r"],
+      "args": ["FFN", "2003", "50", "244", "2", "1", "chlorophyll", "-r"],
       "console": "integratedTerminal"
     }
   ]

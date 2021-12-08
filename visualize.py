@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import sys
-from common import merge_position
+from preprocess_utilities import merge_position
 
 
 def visualize_data(df, date, show_null=False):
