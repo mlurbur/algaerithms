@@ -23,7 +23,7 @@ class Model(tf.keras.Model):
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-        self.lstm_layer1 = tf.keras.layers.LSTM(self.rnn_units*2, return_sequences=True, return_state=False)
+        self.lstm_layer1 = tf.keras.layers.LSTM(self.rnn_units, return_sequences=True, return_state=False)
         self.lstm_layer2 = tf.keras.layers.LSTM(self.rnn_units, return_sequences=True, return_state=False)
         self.lstm_layer3 = tf.keras.layers.LSTM(self.rnn_units, return_sequences=False, return_state=False)
         self.dense1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
@@ -147,9 +147,9 @@ def split_data(inputs, labels):
 
     return train_inputs, train_labels, test_inputs, test_labels
 
-def plot_training(train_loss, test_loss, test_acc, epochs):
-    x_values = np.arange(1, epochs + 1)
-    gs = gridspec.GridSpec(6, 1)
+def plot_training(train_loss, test_loss, test_acc, model):
+    x_values = np.arange(1, len(train_loss) + 1)
+    gs = gridspec.GridSpec(5, 1)
 
     plt.figure()
     plt.subplot(gs[0, 0])
@@ -170,7 +170,14 @@ def plot_training(train_loss, test_loss, test_acc, epochs):
     plt.ylabel('MSE')
     plt.title('Train Loss')
 
-    plt.savefig('some_name.png')
+    plot_filename = 'TrainingPlotFor:hidden_size='
+    plot_filename += str(model.hidden_size)
+    plot_filename += ',rnn_units='
+    plot_filename += str(model.rnn_units)
+    plot_filename += '.png'
+
+    plt.savefig(plot_filename)
+
     print('Finished Plotting')
 
 def run_model(inputs_path_list, labels_path_list, n):
@@ -198,7 +205,7 @@ def run_model(inputs_path_list, labels_path_list, n):
         track_test_loss.append(test_loss)
         track_train_loss.append(train_loss)
 
-    plot_training(track_train_loss, track_test_loss, track_test_acc, model.epochs)
+    plot_training(np.array(track_train_loss), np.array(track_test_loss), np.array(track_test_acc), model)
 
 
     
