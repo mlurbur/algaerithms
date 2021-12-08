@@ -1,4 +1,3 @@
-
 """
 Main file for training model, visualizing results and preprocessing
 
@@ -34,7 +33,7 @@ def train(model, train_inputs, train_labels):
 
 def test(model, test_inputs, test_labels):
     """
-    Tests the model. Returns the average batch MAPE.
+    Tests the model. Returns the average batch MAPE and MSE.
     """
     total_loss = 0
     num_batches = 0
@@ -51,7 +50,7 @@ def test(model, test_inputs, test_labels):
     return model.loss_mape(test_labels, all_pred), total_loss / num_batches
 
 def baseline_mape(inputs, labels, num_neighbors):
-    chlorophyll_values = inputs[:, 0, np.math.floor(num_neighbors/2)]
+    chlorophyll_values = inputs[:, -1, np.math.floor(((2 * num_neighbors + 1)**2)/2)]
     # avg_chlorophyll_value = np.mean(chlorophyll_values)
     mape = 100 * tf.math.reduce_mean(tf.math.abs((chlorophyll_values - labels) / labels))
     return mape
@@ -66,10 +65,12 @@ def run_model(inputs_path_list, labels_path_list, num_neighbors, model_type):
     inputs = np.concatenate(all_inputs, axis=0)
     labels = np.concatenate(all_labels, axis=0)
     # instantiate the model
+    model = None
     if model_type == "RNN":
         model = RNN(inputs.shape[1])
     if model_type == "FFN":
         model = FFN(inputs.shape[1])
+    assert(model is not None)
     # train model for model.epochs epochs
     print("Training the", model_type, "...")
     total_base_mape = 0
@@ -86,10 +87,8 @@ def run_model(inputs_path_list, labels_path_list, num_neighbors, model_type):
     return model
 
 mapping_file = 'data/Bering_full_grid_lookup_no_goa.RDS'
-visualization_path = 'imgs/filled_with_model.gif'
 
 def main():
-    # uncomment below for use with command line
     args = parse_args()
     year = args.year
     start_day = args.start_day
@@ -103,6 +102,7 @@ def main():
 
     input_data_file = f"data/merged_sst_ice_chl_par_{year}.RDS"
     inputs_file_path, labels_file_path = generate_output_paths(year, start_day, end_day, time_window, num_neighbors, data_types)
+    visualization_path = f'imgs/data_filled_with_{model}.gif'
 
     if PREPROCESS:
         preprocess(input_data_file, mapping_file, data_types, start_day, end_day, time_window, num_neighbors, inputs_file_path, labels_file_path)

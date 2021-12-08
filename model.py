@@ -1,7 +1,8 @@
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
-from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.layers import LSTM, Dense, Flatten
 from tensorflow.keras.losses import MeanSquaredError
+import numpy as np
 
 class RNN(Model):
     def __init__(self, time_step):
@@ -64,7 +65,7 @@ class FFN(Model):
 
         # feed-forward network architecture
         self.network = Sequential()
-        self.network.add(Dense(self.hidden_size, activation='relu'))
+        self.network.add(Flatten())
         self.network.add(Dense(self.hidden_size, activation='relu'))
         self.network.add(Dense(self.hidden_size, activation='relu'))
         self.network.add(Dense(1))

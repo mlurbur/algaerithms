@@ -235,3 +235,46 @@ def visualize_day_from_array(data, lat_dict, lon_dict, image_path=None):
         fig.write_image(image_path)
     else:
         fig.show()
+
+def plot_training(train_loss, test_loss, test_acc, model):
+    x_values = np.arange(1, len(train_loss) + 1)
+    gs = gridspec.GridSpec(5, 1)
+
+    plt.figure()
+    plt.subplot(gs[0, 0])
+    plt.plot(x_values, test_acc * 100)
+    plt.xlabel('Epoch')
+    plt.ylabel('MAPE')
+    plt.title('Test Accuracy')
+    
+    plt.subplot(gs[2, 0])
+    plt.plot(x_values, test_loss * 100)
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE')
+    plt.title('Test Loss')
+    
+    plt.subplot(gs[4, 0])
+    plt.plot(x_values, train_loss * 100)
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE')
+    plt.title('Train Loss')
+
+    plot_filename = 'num_vars='
+    plot_filename += str(np.sum([np.prod(v.shape) for v in model.trainable_variables]))
+    plot_filename += ',hidden_size='
+    plot_filename += str(model.hidden_size)
+    plot_filename += ',rnn_units='
+    plot_filename += str(model.rnn_units)
+    plot_filename += ',time_step='
+    plot_filename += str(model.time_step)
+    plot_filename += ',batch_size='
+    plot_filename += str(model.batch_size)
+    plot_filename += ',learning_rate='
+    plot_filename += str(model.learning_rate)
+    plot_filename += ',batch_size='
+    plot_filename += str(model.batch_size)
+    plot_filename += '.png'
+
+    plt.savefig(plot_filename)
+
+    print('Finished Plotting')
