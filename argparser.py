@@ -58,6 +58,8 @@ def parse_args():
     parser.add_argument("time_window", type=validate_time_window, help="the number of previous days whose data should be included")
     parser.add_argument("num_neighbors", type=validate_num_neighbors, help="the width of the points surrounding the point of interest whose data should be included")
     parser.add_argument("data_types", type=validate_data_types, help="the types of data to include in the inputs, separated by commas (valid data types are chlorophyll, par, sst, ice, depth, meanlat, meanlon)")
+    parser.add_argument("-p", "--preprocess", help="whether or not the data should be preprocessed first", action="store_true")
+    parser.add_argument("-r", "--run", help="whether or not the model should be trained and tested", action="store_true")
     parser.add_argument("-v", "--verbose", help="print preprocessing steps verbosely", action="store_true")
 
     args = parser.parse_args()

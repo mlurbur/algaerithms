@@ -125,6 +125,7 @@ def average(inputs, labels, n):
     chlor = inputs[0,0,:(n*2 + 1)**2]
     avg = np.mean(chlor)
     acc = 100 * np.mean(np.absolute((avg - labels)/labels))
+
     return acc
 
 
@@ -141,18 +142,19 @@ def split_data(inputs, labels):
     return train_inputs, train_labels, test_inputs, test_labels
 
 def run_model(inputs_path_list, labels_path_list, n):
-    train_data = np.array([])
-    ground_truth = np.array([])
+    inputs_list = []
+    labels_list = []
     for i, j in zip(inputs_path_list, labels_path_list):
+        inputs_list.append(np.load(i))
+        labels_list.append(np.load(j))
 
-        train_data = np.append(train_data,np.load(i))
-        ground_truth = np.append(ground_truth,np.load(j))
-
-    model = Model(train_data.shape[1])
+    data = np.concatenate(inputs_list,axis=0)
+    labels = np.concatenate(labels_list,axis=0)
+    model = Model(data.shape[1])
 
     print("starting train")
     for i in range(model.epochs):
-        train_inputs, train_labels, test_inputs, test_labels = split_data(train_data, ground_truth)
+        train_inputs, train_labels, test_inputs, test_labels = split_data(data, labels)
         train_loss = train(model, train_inputs, train_labels)
         test_acc, test_loss = test(model, test_inputs, test_labels)
         print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}, baseline_err: {}".format(i + 1, 
