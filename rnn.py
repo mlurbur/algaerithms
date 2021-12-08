@@ -19,7 +19,7 @@ class Model(tf.keras.Model):
         self.time_step = time_step
         self.batch_size = 200
         self.learning_rate = 0.001
-        self.epochs = 2
+        self.epochs = 10
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
@@ -170,10 +170,20 @@ def plot_training(train_loss, test_loss, test_acc, model):
     plt.ylabel('MSE')
     plt.title('Train Loss')
 
-    plot_filename = 'TrainingPlotFor:hidden_size='
+    plot_filename = 'num_vars='
+    plot_filename += str(np.sum([np.prod(v.shape) for v in model.trainable_variables]))
+    plot_filename += ',hidden_size='
     plot_filename += str(model.hidden_size)
     plot_filename += ',rnn_units='
     plot_filename += str(model.rnn_units)
+    plot_filename += ',time_step='
+    plot_filename += str(model.time_step)
+    plot_filename += ',batch_size='
+    plot_filename += str(model.batch_size)
+    plot_filename += ',learning_rate='
+    plot_filename += str(model.learning_rate)
+    plot_filename += ',batch_size='
+    plot_filename += str(model.batch_size)
     plot_filename += '.png'
 
     plt.savefig(plot_filename)
