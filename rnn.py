@@ -2,6 +2,8 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras import Model
 from tensorflow.keras.losses import MeanSquaredError
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 class Model(tf.keras.Model):
@@ -12,21 +14,23 @@ class Model(tf.keras.Model):
 
         super(Model, self).__init__()
 
-        self.hidden_size = 500
-        self.rnn_units = 164
+        self.hidden_size = 512
+        self.rnn_units = 1024
         self.time_step = time_step
         self.batch_size = 200
         self.learning_rate = 0.001
-        self.epochs = 25
+        self.epochs = 2
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
 
-        self.lstm_layer1 = tf.keras.layers.LSTM(self.rnn_units, return_sequences=True, return_state=False)
-        # self.lstm_layer2 = tf.keras.layers.LSTM(1028, return_sequences=True, return_state=False)
+        self.lstm_layer1 = tf.keras.layers.LSTM(self.rnn_units*2, return_sequences=True, return_state=False)
+        self.lstm_layer2 = tf.keras.layers.LSTM(self.rnn_units, return_sequences=True, return_state=False)
         self.lstm_layer3 = tf.keras.layers.LSTM(self.rnn_units, return_sequences=False, return_state=False)
         self.dense1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
         self.dense2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.dense3 = tf.keras.layers.Dense(1)
+        self.dense3 = tf.keras.layers.Dense(self.hidden_size//2, activation='relu')
+        self.dense4 = tf.keras.layers.Dense(self.hidden_size//4, activation='relu')
+        self.dense5 = tf.keras.layers.Dense(1)
         
 
     def call(self, inputs, initial_state):
@@ -40,13 +44,15 @@ class Model(tf.keras.Model):
         """
 
         lstm_output1 = self.lstm_layer1(inputs)
-        # lstm_output2 = self.lstm_layer2(lstm_output1)
-        lstm_output3 = self.lstm_layer3(lstm_output1)
-        hidden1 = self.dense1(lstm_output3)
-        hidden2 = self.dense2(hidden1)
-        predictions = self.dense3(hidden2)
+        lstm_output2 = self.lstm_layer2(lstm_output1)
+        lstm_output3 = self.lstm_layer3(lstm_output2)
+        logit1 = self.dense1(lstm_output3)
+        logit2 = self.dense2(logit1)
+        logit3 = self.dense3(logit2)
+        logit4 = self.dense4(logit3)
+        predictions = self.dense5(logit4)
 
-        # get the final predicted values (i think)
+        # get the final predicted values
         pred = predictions[:,0]
         return pred
 
@@ -140,6 +146,32 @@ def split_data(inputs, labels):
 
     return train_inputs, train_labels, test_inputs, test_labels
 
+def plot_training(train_loss, test_loss, test_acc, epochs):
+    x_values = np.arange(1, epochs + 1)
+    gs = gridspec.GridSpec(6, 1)
+
+    plt.figure()
+    plt.subplot(gs[0, 0])
+    plt.plot(x_values, test_acc * 100)
+    plt.xlabel('Epoch')
+    plt.ylabel('MAPE')
+    plt.title('Test Accuracy')
+    
+    plt.subplot(gs[2, 0])
+    plt.plot(x_values, test_loss * 100)
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE')
+    plt.title('Test Loss')
+    
+    plt.subplot(gs[4, 0])
+    plt.plot(x_values, train_loss * 100)
+    plt.xlabel('Epoch')
+    plt.ylabel('MSE')
+    plt.title('Train Loss')
+
+    plt.savefig('some_name.png')
+    print('Finished Plotting')
+
 def run_model(inputs_path_list, labels_path_list, n):
     inputs_list = []
     labels_list = []
@@ -153,11 +185,22 @@ def run_model(inputs_path_list, labels_path_list, n):
     model = Model(data.shape[1])
 
     print("starting train")
+    track_train_loss = []
+    track_test_acc = []
+    track_test_loss = []
     for i in range(model.epochs):
         train_inputs, train_labels, test_inputs, test_labels = split_data(data, labels)
         train_loss = train(model, train_inputs, train_labels)
         test_acc, test_loss = test(model, test_inputs, test_labels)
         print("epoch: {} train_loss: {}, test_loss: {}, test_err: {}, baseline_err: {}".format(i + 1, 
             tf.math.round(train_loss), tf.math.round(test_loss), tf.math.round(test_acc), tf.math.round(average(test_inputs, test_labels, n))))
+        track_test_acc.append(test_acc)
+        track_test_loss.append(test_loss)
+        track_train_loss.append(train_loss)
+
+    plot_training(track_train_loss, track_test_loss, track_test_acc, model.epochs)
+
+
+    
 
     return model
