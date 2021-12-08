@@ -1,7 +1,11 @@
 """
 Main file for training model, visualizing results and preprocessing
+
+Usage:
+python main.py RNN 2003 50 244 2 1 chlorophyll -r
 """
 
+from tensorflow.python.training.tracking import base
 from visualization_utilities import fill_with_model
 from preprocess_utilities import preprocess, generate_output_paths, split_data
 from argparser import parse_args
@@ -46,9 +50,9 @@ def test(model, test_inputs, test_labels):
     return model.loss_mape(test_labels, all_pred), total_loss / num_batches
 
 def baseline_mape(inputs, labels, num_neighbors):
-    chlorophyll_values = inputs[0, 0, :(num_neighbors * 2 + 1) ** 2]
-    avg_chlorophyll_value = np.mean(chlorophyll_values)
-    mape = 100 * tf.math.reduce_mean(tf.math.abs((avg_chlorophyll_value - labels) / labels))
+    chlorophyll_values = inputs[:, 0, np.math.floor(num_neighbors/2)]
+    # avg_chlorophyll_value = np.mean(chlorophyll_values)
+    mape = 100 * tf.math.reduce_mean(tf.math.abs((chlorophyll_values - labels) / labels))
     return mape
 
 def run_model(inputs_path_list, labels_path_list, num_neighbors, model_type):
@@ -69,16 +73,18 @@ def run_model(inputs_path_list, labels_path_list, num_neighbors, model_type):
     assert(model is not None)
     # train model for model.epochs epochs
     print("Training the", model_type, "...")
+    total_base_mape = 0
     for i in range(model.epochs):
         train_inputs, train_labels, test_inputs, test_labels = split_data(inputs, labels)
         train_mse = train(model, train_inputs, train_labels)
         test_mape, test_mse = test(model, test_inputs, test_labels)
-        print(f"Epoch: {i+1} | Train MSE: {tf.math.round(train_mse)}; Test MSE: {tf.math.round(test_mse)}; Test MAPE: {tf.math.round(test_mape)}%; Baseline MAPE: {tf.math.round(baseline_mape(test_inputs, test_labels, num_neighbors))}%")
+        base_mape = baseline_mape(test_inputs, test_labels, num_neighbors)
+        total_base_mape += base_mape
+        print(f"Epoch: {i+1} | Train MSE: {tf.math.round(train_mse)}; Test MSE: {tf.math.round(test_mse)}; Test MAPE: {tf.math.round(test_mape)}%; Baseline MAPE: {tf.math.round(base_mape)}%")
+    # print average baseline MAPE
+    print(f'Average baseline MAPE: {tf.math.round(total_base_mape/model.epochs)}%')
     # return the trained model
     return model
-
-preprocess_flag = False
-train_flag = True
 
 mapping_file = 'data/Bering_full_grid_lookup_no_goa.RDS'
 

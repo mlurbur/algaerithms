@@ -31,6 +31,7 @@ def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n, save
 
     print('Converting data to array form representing spatial layout...')
     data_array = convert_map_to_array(df, lat_dict, lon_dict, ["chlorophyll"], min_d=min_day, max_d=max_day)
+    # visualize_day_from_array(data_array[0][50], lat_dict, lon_dict)
     print("Filling in missing chlorophyll values...")
     filled_data = fill_missing(data_array[0])
     data_array_with_filled = np.copy(data_array)
@@ -42,6 +43,7 @@ def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n, save
     for point, val in zip(valid_indices, predicted_values):
         data_with_predicted[point[0], point[1], point[2]] = val
     
+    # visualize_day_from_array(data_with_predicted[50], lat_dict, lon_dict)
     visualize_two_as_gif(data_array[0],data_with_predicted, save_path)
     print("Filled", 100*percent_filled, "percent of missing values.")
 

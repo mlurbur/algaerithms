@@ -137,7 +137,7 @@ def convert_map_to_array(df, lat_dict, lon_dict, column_names, min_d=1, max_d=36
     max_d: maximum julian day to include
 
     Returns:
-    data_array_list: list of arrays of shape (num_time_steps, num_unique_lat, num_unique_lon)
+    data_array_list: list of arrays of shape (num_data_types, num_time_steps, num_unique_lat, num_unique_lon)
     """
 
     PAD_VAL = -np.inf
