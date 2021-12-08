@@ -31,7 +31,7 @@ t = 2
 if __name__ == "__main__":
     if preprocess_bool:
         preprocess(raw_data_file, mapping_file, params_of_interest, 50, 140, t, n, 
-            'preprocessed-data/test_inputs.npy', 'preprocessed-data/test_lables.npy')
+            'preprocessed-data/test_inputs.npy', 'preprocessed-data/test_labels.npy')
     if train:
         trained_model = run_model(inputs_path_list, labels_path_list, n)
         fill_with_model(trained_model, raw_data_file, mapping_file, 50, 140, t, n, visualization_path)
