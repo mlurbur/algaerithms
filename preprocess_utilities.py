@@ -328,7 +328,7 @@ def gen_data(original_chlor_data, data_array_list, t, n):
     return np.array(data_array), np.array(gt_values)
 
 
-def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_data_file, save_gt_file, visualize=False):
+def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, time_window, num_neighbors, save_data_file, save_gt_file):
     """
     Performs data preprocessing. Saves final data in save_file.
 
@@ -342,7 +342,6 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
     num_neighbors: num neighbors (kinda) to include in data
     save_data_file: file path to save data
     save_gt_file: file path to save ground truth values
-    visualize: visualize stuff
     """
 
     if params_of_interest[0] != "chlorophyll":
@@ -360,9 +359,6 @@ def preprocess(data_file, mapping_file, params_of_interest, min_day, max_day, ti
     data_array = convert_map_to_array(df, lat_dict, lon_dict, params_of_interest, min_d=min_day, max_d=max_day)
     print("Filling in missing chlorophyll values...")
     filled_data = fill_missing(data_array[0])
-
-    if visualize:
-        visualize_two_as_gif(data_array[0], filled_data, "animations/compare.gif")
 
     print("Generating data set from valid ground truth values...")
     # replace original data with filled data in data_array
