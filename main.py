@@ -50,7 +50,7 @@ def test(model, test_inputs, test_labels):
     return model.loss_mape(test_labels, all_pred), total_loss / num_batches
 
 def baseline_mape(inputs, labels, num_neighbors):
-    chlorophyll_values = inputs[:, 0, np.math.floor(num_neighbors/2)]
+    chlorophyll_values = inputs[:, -1, np.math.floor(((2 * num_neighbors + 1)**2)/2)]
     # avg_chlorophyll_value = np.mean(chlorophyll_values)
     mape = 100 * tf.math.reduce_mean(tf.math.abs((chlorophyll_values - labels) / labels))
     return mape
