@@ -1,6 +1,5 @@
 import numpy as np
 import plotly.express as px
-import pyreadr
 import imageio
 import os
 import matplotlib.pyplot as plt
@@ -38,7 +37,7 @@ def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n, save
     data_array_with_filled[0] = filled_data
     model_data, valid_indices, percent_filled = find_predictable(data_array[0], data_array_with_filled, t, n)
 
-    predicted_values = model.call(model_data, None)
+    predicted_values = model.call(model_data)
     data_with_predicted = np.copy(data_array[0])
     for point, val in zip(valid_indices, predicted_values):
         data_with_predicted[point[0], point[1], point[2]] = val
