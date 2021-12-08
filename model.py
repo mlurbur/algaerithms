@@ -22,7 +22,7 @@ class RNN(Model):
         # rnn architecture
         self.network = Sequential()
         self.network.add(LSTM(self.rnn_units, return_sequences=True, return_state=False))
-        self.network.add(LSTM(self.rnn_units, return_sequences=False, return_state=False))
+        # self.network.add(LSTM(self.rnn_units, return_sequences=False, return_state=False))
         self.network.add(Dense(self.hidden_size, activation='relu'))
         self.network.add(Dense(self.hidden_size, activation='relu'))
         self.network.add(Dense(1))

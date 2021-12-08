@@ -549,3 +549,5 @@ def split_data(inputs, labels):
     train_labels = labels_shuffled[:split]
     test_labels = labels_shuffled[split + 1:]
     return train_inputs, train_labels, test_inputs, test_labels
+
+test_stuff()
