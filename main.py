@@ -6,7 +6,7 @@ python main.py RNN 2003 50 244 2 1 chlorophyll -r
 """
 
 from tensorflow.python.training.tracking import base
-from visualization_utilities import fill_with_model
+from visualization_utilities import fill_with_model, compare_to_baseline
 from preprocess_utilities import preprocess, generate_output_paths, split_data
 from argparser import parse_args
 from model import RNN, FFN
@@ -99,7 +99,7 @@ def main():
     model = args.model
     PREPROCESS = args.preprocess
     RUN = args.run
-
+    test_data_file = "data/merged_sst_ice_chl_par_2004.RDS"
     input_data_file = f"data/merged_sst_ice_chl_par_{year}.RDS"
     inputs_file_path, labels_file_path = generate_output_paths(year, start_day, end_day, time_window, num_neighbors, data_types)
     visualization_path = f'imgs/data_filled_with_{model}.gif'
@@ -108,6 +108,8 @@ def main():
         preprocess(input_data_file, mapping_file, data_types, start_day, end_day, time_window, num_neighbors, inputs_file_path, labels_file_path)
     if RUN:
         trained_model = run_model([inputs_file_path], [labels_file_path], num_neighbors, model)
+        model_mape, baseline_mape = compare_to_baseline(trained_model, test_data_file, mapping_file, start_day, end_day, time_window, num_neighbors)
+        print(f"Model mape: {model_mape}%, Baseline mape: {baseline_mape}%")
         fill_with_model(trained_model, input_data_file, mapping_file, start_day, end_day, time_window, num_neighbors, visualization_path)
 
 if __name__ == "__main__":

@@ -10,8 +10,8 @@ class RNN(Model):
 
         # define model hyperparameters
         self.time_step = time_step
-        self.hidden_size = 500
-        self.rnn_units = 164
+        self.hidden_size = 200
+        self.rnn_units = 80
 
         self.batch_size = 200
         self.learning_rate = 1e-3
@@ -23,7 +23,7 @@ class RNN(Model):
         # rnn architecture
         self.network = Sequential()
         self.network.add(LSTM(self.rnn_units, return_sequences=True, return_state=False))
-        # self.network.add(LSTM(self.rnn_units, return_sequences=False, return_state=False))
+        self.network.add(LSTM(self.rnn_units, return_sequences=False, return_state=False))
         self.network.add(Dense(self.hidden_size, activation='relu'))
         self.network.add(Dense(self.hidden_size, activation='relu'))
         self.network.add(Dense(1))

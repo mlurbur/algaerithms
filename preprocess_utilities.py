@@ -266,6 +266,89 @@ def fill_missing(big_data_chlor):
     
     return filled_data
 
+def fair_comparison(original_chlor_data, filled_data_list, t, n):
+    """
+    Generates data to make a comparison between basic averaging and model
+
+    Args:
+    original_data: *just* non augmented chlorophyll data with ground truth values. From convert_map_to_array.
+    filled_data_list: [filled chlorophyll data, other data of same shape]
+    t: num time steps to include, only looks backward as of now.
+    n: num neighbors to include (kinda)
+
+    Returns:
+    data_array: data of shape: (N, t, num_data_types * (t*(2n+1)^2) -1)
+    gt_values: ground truth values of shape (N,)
+    average_results: estimates of ground truth by simple averaging
+    """
+
+    # find location of ground truth values, assume that non data regions are filled with -np.inf
+    gt_indices = np.argwhere(np.isfinite(original_chlor_data))
+    max_z, max_x, max_y = original_chlor_data.shape
+    data_array = []
+    average_estimate = []
+    gt_values = []
+    # get data slice from filled_data for each ground truth
+    for point in tqdm(gt_indices):
+            x = point[1]
+            y = point[2]
+            z = point[0]
+            if z >= t:
+                # loop through all data types for a given time period
+                chlor_valid = False
+                data_count = 0
+                for i in range(len(filled_data_list)):
+                    x_min = x-n
+                    x_max = x+n
+                    y_min = y-n
+                    y_max = y+n
+                    # check that slice is in bounds of data
+                    if (x_min < 0) or (y_min < 0):
+                        break
+                    if (x_max > max_x-1) or (y_max > max_y-1):
+                        break
+                    slice = filled_data_list[i][z-t:z, x_min:x_max+1,y_min:y_max+1]
+                    # skip if contains nan or inf
+                    if (np.isnan(slice).any() or np.isinf(slice).any()):
+                        break
+                    flatter_slice = np.reshape(slice, (t, slice.shape[1] * slice.shape[2]))
+                    if i == 0: # only add gt of chlorophyll
+                        # we now have a valid input for the model
+                        # now make an estimate of averaging
+                        future_looker = np.where(np.isfinite(original_chlor_data[z+1:, x, y]))[0]
+                        past_looker = np.where(np.isfinite(original_chlor_data[:z, x, y][::-1]))[0]
+                        if (z+1 < max_z-1) and len(future_looker)>0:
+                            near_future = future_looker[0]
+                        else:
+                            near_future = np.inf
+                        if (z > 0) and len(past_looker)>0:
+                            near_past = past_looker[0]
+                        else:
+                            near_past = np.inf
+                        
+                        if near_future <= near_past:
+                            nearest_val = original_chlor_data[z+near_future+1,x,y]
+                        else:
+                            nearest_val = original_chlor_data[z-near_past-1,x,y]
+
+                        fat_slice = flatter_slice
+                        gt_val = filled_data_list[0][z, x, y]
+                        chlor_valid = True
+                        data_count += 1
+                    elif chlor_valid:
+                        fat_slice = np.concatenate((fat_slice,flatter_slice), axis=1)
+                        data_count += 1
+                        
+                # only keep data_bit if all data were included
+                if data_count == len(filled_data_list):
+                    average_estimate.append(nearest_val)
+                    data_array.append(fat_slice)
+                    gt_values.append(gt_val)
+    return np.array(data_array), np.array(gt_values), np.array(average_estimate)
+
+
+
+
 def gen_data(original_chlor_data, data_array_list, t, n):
     """
     Generates array of data to be used for testing and training. Skips values if time and n window
@@ -496,10 +579,28 @@ def test_stuff():
         [ 3.,  3.,  3.,  3., -3.,  3.,  3.,  3.,  3.,0,0,0,0,0,0,0,0,0]]
         ])
 
-    assert np.array_equal(data_array, expected_data_array), "fock"
-    assert np.array_equal(gt_array, np.array([-3,-4])), "fock"
+    assert np.array_equal(data_array, expected_data_array), "damn"
+    assert np.array_equal(gt_array, np.array([-3,-4])), "damn"
 
     print("Tests for gen_data passed")
+
+    filled_chlor = np.ones((4,3,3))
+    original_data = np.full((4,3,3),np.nan)
+    original_data[0,1,1] = 1
+    original_data[1,1,1] = 2
+    original_data[2,1,1] = np.nan
+    original_data[3,1,1] = 3
+    ice = np.full((4,3,3),0)
+
+    data_array, gt_array, average_array = fair_comparison(original_data, [filled_chlor, ice], 1, 1)
+    data_array_gen, gt_array_gen = gen_data(original_data, [filled_chlor, ice], 1, 1)
+
+
+    assert np.array_equal(data_array, data_array_gen), "shoot"
+    assert np.array_equal(gt_array, gt_array_gen), "shoot"
+    assert np.array_equal(average_array, np.array([1,2])), "shoot"
+
+    print("All fair_comparison tests passed.")
 
 
 def merge_position(rds_file, mapping_file):
@@ -550,4 +651,4 @@ def split_data(inputs, labels):
     test_labels = labels_shuffled[split + 1:]
     return train_inputs, train_labels, test_inputs, test_labels
 
-test_stuff()
+# test_stuff()

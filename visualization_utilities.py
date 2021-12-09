@@ -4,8 +4,48 @@ import imageio
 import os
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import tensorflow as tf
 
-from preprocess_utilities import create_mapping_dict, merge_position, merge_position, convert_map_to_array, fill_missing
+from preprocess_utilities import create_mapping_dict, merge_position, merge_position, convert_map_to_array, fill_missing, fair_comparison
+
+def compare_to_baseline(model, data_file, mapping_file, min_day, max_day, t, n):
+    """
+    Compares model performance to baseline scheme
+
+    Args:
+    model: trained model object
+    data_file: path to RDS file
+    mapping_file: path to file with mapping info
+    min_day: minimum day to fill with model
+    max_day: max day to fill with model
+    t: time
+    n: num neighbors
+    save_path: path to save gif visualization.
+
+    Returns:
+    model_mape: mape of model on test set
+    baseline_mape: mape of baseline on test set
+    """
+    lat_dict, lon_dict = create_mapping_dict(mapping_file)
+
+    print('Merging positional data...')
+    df = merge_position(data_file, mapping_file)
+
+    print('Converting data to array form representing spatial layout...')
+    data_array = convert_map_to_array(df, lat_dict, lon_dict, ["chlorophyll"], min_d=min_day, max_d=max_day)
+    # visualize_day_from_array(data_array[0][50], lat_dict, lon_dict)
+    print("Filling in missing chlorophyll values...")
+    filled_data = fill_missing(data_array[0])
+    data_array_with_filled = np.copy(data_array)
+    data_array_with_filled[0] = filled_data  
+
+    input_data, gt_values, baseline_values = fair_comparison(data_array[0], data_array_with_filled, t, n)
+    pred = tf.squeeze(model.call(input_data))
+    model_mape = model.loss_mape(pred, gt_values)
+    baseline_mape = model.loss_mape(baseline_values, gt_values)
+
+    return model_mape, baseline_mape
+
 
 
 def fill_with_model(model, data_file, mapping_file, min_day, max_day, t, n, save_path):
