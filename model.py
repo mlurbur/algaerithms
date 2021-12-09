@@ -10,15 +10,17 @@ class RNN(Model):
 
         # define model hyperparameters
         self.time_step = time_step
-        self.hidden_size = 200
-        self.rnn_units = 80
+        self.hidden_size = 400
+        self.rnn_units = 164
 
         self.batch_size = 200
-        self.learning_rate = 1e-3
-        self.epochs = 25
+        self.initial_learning_rate = 1e-3
+        self.lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.initial_learning_rate, 
+            decay_steps=15, decay_rate=0.96, staircase=True)
+        self.epochs = 35
 
         # initialize optimizer
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
 
         # rnn architecture
         self.network = Sequential()
@@ -57,11 +59,13 @@ class FFN(Model):
         self.hidden_size = 400
 
         self.batch_size = 200
-        self.learning_rate = 1e-3
+        self.initial_learning_rate = 1e-3
+        self.lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(self.initial_learning_rate, 
+            decay_steps=15, decay_rate=0.96, staircase=True)
         self.epochs = 25
 
         # initialize optimizer
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=self.lr_schedule)
 
         # feed-forward network architecture
         self.network = Sequential()

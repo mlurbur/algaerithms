@@ -17,7 +17,7 @@
             "request": "launch",
             "program": "main.py",
             "args": [
-                "RNN",
+                "FFN",
                 "2003",
                 "50",
                 "244",

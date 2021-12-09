@@ -315,6 +315,8 @@ def fair_comparison(original_chlor_data, filled_data_list, t, n):
                     if i == 0: # only add gt of chlorophyll
                         # we now have a valid input for the model
                         # now make an estimate of averaging
+
+                        # find nearest present value if past and future
                         future_looker = np.where(np.isfinite(original_chlor_data[z+1:, x, y]))[0]
                         past_looker = np.where(np.isfinite(original_chlor_data[:z, x, y][::-1]))[0]
                         if (z+1 < max_z-1) and len(future_looker)>0:
@@ -325,7 +327,8 @@ def fair_comparison(original_chlor_data, filled_data_list, t, n):
                             near_past = past_looker[0]
                         else:
                             near_past = np.inf
-                        
+                            
+                        # use nearest of the two as our baseline prediction
                         if near_future <= near_past:
                             nearest_val = original_chlor_data[z+near_future+1,x,y]
                         else:
@@ -344,8 +347,8 @@ def fair_comparison(original_chlor_data, filled_data_list, t, n):
                     average_estimate.append(nearest_val)
                     data_array.append(fat_slice)
                     gt_values.append(gt_val)
-    return np.array(data_array), np.array(gt_values), np.array(average_estimate)
 
+    return np.array(data_array), np.array(gt_values), np.array(average_estimate)
 
 
 

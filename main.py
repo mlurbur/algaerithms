@@ -24,7 +24,7 @@ def train(model, train_inputs, train_labels):
         batched_labels = train_labels[i : i + model.batch_size]
         with tf.GradientTape() as tape:
             pred = tf.squeeze(model.call(batched_inputs))
-            loss = model.loss_mape(pred, batched_labels)
+            loss = model.loss_mse(pred, batched_labels)
         gradients = tape.gradient(loss, model.trainable_variables)
         model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))
         total_loss += loss
