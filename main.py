@@ -55,6 +55,7 @@ def baseline_mape(inputs, labels, num_neighbors):
     mape = 100 * tf.math.reduce_mean(tf.math.abs((chlorophyll_values - labels) / labels))
     return mape
 
+
 def run_model(inputs_path_list, labels_path_list, num_neighbors, model_type):
     # extra preprocessing to aggregate all data files
     all_inputs = []
@@ -73,16 +74,12 @@ def run_model(inputs_path_list, labels_path_list, num_neighbors, model_type):
     assert(model is not None)
     # train model for model.epochs epochs
     print("Training the", model_type, "...")
-    total_base_mape = 0
     for i in range(model.epochs):
         train_inputs, train_labels, test_inputs, test_labels = split_data(inputs, labels)
         train_mse = train(model, train_inputs, train_labels)
         test_mape, test_mse = test(model, test_inputs, test_labels)
         base_mape = baseline_mape(test_inputs, test_labels, num_neighbors)
-        total_base_mape += base_mape
-        print(f"Epoch: {i+1} | Train MSE: {tf.math.round(train_mse)}; Test MSE: {tf.math.round(test_mse)}; Test MAPE: {tf.math.round(test_mape)}%; Baseline MAPE: {tf.math.round(base_mape)}%")
-    # print average baseline MAPE
-    print(f'Average baseline MAPE: {tf.math.round(total_base_mape/model.epochs)}%')
+        print(f"Epoch: {i+1} | Train MSE: {tf.math.round(train_mse)}; Test MSE: {tf.math.round(test_mse)}; Test MAPE: {tf.math.round(test_mape)}%")
     # return the trained model
     return model
 
@@ -99,7 +96,6 @@ def main():
     model = args.model
     PREPROCESS = args.preprocess
     RUN = args.run
-    test_data_file = "data/merged_sst_ice_chl_par_2004.RDS"
     input_data_file = f"data/merged_sst_ice_chl_par_{year}.RDS"
     inputs_file_path, labels_file_path = generate_output_paths(year, start_day, end_day, time_window, num_neighbors, data_types)
     visualization_path = f'imgs/data_filled_with_{model}.gif'
@@ -108,8 +104,10 @@ def main():
         preprocess(input_data_file, mapping_file, data_types, start_day, end_day, time_window, num_neighbors, inputs_file_path, labels_file_path)
     if RUN:
         trained_model = run_model([inputs_file_path], [labels_file_path], num_neighbors, model)
-        model_mape, baseline_mape = compare_to_baseline(trained_model, test_data_file, mapping_file, start_day, end_day, time_window, num_neighbors)
-        print(f"Model mape: {model_mape}%, Baseline mape: {baseline_mape}%")
+        # doesn't make sense to use model MAPE here since it will be seeing some of the training set
+        # I think that the baseline is still pretty valid
+        _, baseline_mape = compare_to_baseline(trained_model, input_data_file, mapping_file, start_day, end_day, time_window, num_neighbors)
+        print(f"Baseline mape: {baseline_mape}%")
         fill_with_model(trained_model, input_data_file, mapping_file, start_day, end_day, time_window, num_neighbors, visualization_path)
 
 if __name__ == "__main__":
