@@ -16,14 +16,14 @@ Processing the data was the most challenging part of the project. We had access 
 
 The first step was to translate the data from longitudinal and latitudinal coordinates into array indices that preserved the spatial relationship between points. To do this, we project the data onto a grid and then map the position in the grid to an index in an array.
 
-![Alt text](imgs/grid_visual.png)
+![Alt text](imgs/projection.png)
 _Visualization of grid projection._
 
 Next, we generated training data from our very sparse dataset. To generate usable training data, we followed a similar approach to Fan et. al, fixing missing values with the average of nearby regions within time windows. Filling missing values at this step is necessary because we can’t feed our model missing values. We need to always be able to pass a full encoding. 
 
 After fixing as many missing values as possible, we generate training and testing data by using original data as labels, and the data in previous time periods (filled and original) as the input data for the model. We use data from past days and nearby regions as our model input.
 
-![Alt text](imgs/preprocess_visual.png)
+![Alt text](imgs/train_data.png)
 
 ## Results
 
